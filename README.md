@@ -1,0 +1,1 @@
+# skku-ai-hackathon
