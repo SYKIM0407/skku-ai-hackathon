@@ -28,7 +28,7 @@ export async function POST(req: Request) {
   const db = sbAdmin();
 
   const lines = await recentLines(room.id, CONFIG.CONTEXT_WINDOW_SEC);
-  // 최근 강의 문장이 없으면(강의 인식·데모가 꺼져 있음) "이거", "?" 같은 질문을 해석할 맥락이 없어
+  // 최근 강의 문장이 없으면(강의 인식이 꺼져 있음) "이거", "?" 같은 질문을 해석할 맥락이 없어
   // AI가 무관으로 오판한다. AI를 부르지 않고 강의 진행 중이 아님을 알린다 (저장하지 않음)
   if (!lines.length) return ok<QuestionRes>({ status: 'rejected', message: NOT_IN_LECTURE });
 
