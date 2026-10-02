@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('server-only', () => ({}));
 vi.mock('./supabase/server', () => ({ sbAdmin: () => { throw new Error('DB 없음'); } }));
 
-const { validateP1, validateP2, validateP3, fallbackSummary, p3User } = await import('./prompts');
+const { validateP1, validateP2, validateP3, validateP6, fallbackSummary, p3User, p6User, P6_MAX_CHARS } = await import('./prompts');
 const { parseJSONObject } = await import('./llm');
 
 const lines = [
@@ -119,5 +119,19 @@ describe('P3', () => {
     expect(u).toContain('[답변 분포] 1개 1명(10%), 2개 7명(70%), 3개 2명(20%)');
     expect(u).toContain('[L43] (-60초) 행렬식을 0으로 놓습니다');
     expect(u).toContain('[학생 응답 2개]');
+  });
+});
+
+describe('P6', () => {
+  it('validateP6: 문자열만, 공백 정리, 대소문자 무시 중복 제거, 30자 초과 제외, 최대 40개', () => {
+    expect(validateP6({ glossary: [' 고윳값 ', '고윳값', 'λ', '람다', 3, '', 'Eigen  Value', 'eigen value', 'x'.repeat(31)] }))
+      .toEqual(['고윳값', 'λ', '람다', 'Eigen Value']);
+    expect(validateP6({ glossary: Array.from({ length: 50 }, (_, i) => `용어${i}`) })).toHaveLength(40);
+    expect(validateP6({ glossary: 'x' })).toEqual([]);
+  });
+
+  it('p6User: 교안 텍스트는 앞부분 2만 자까지만', () => {
+    const u = p6User('가'.repeat(P6_MAX_CHARS + 500));
+    expect(u.match(/가/g)?.length).toBe(P6_MAX_CHARS);
   });
 });

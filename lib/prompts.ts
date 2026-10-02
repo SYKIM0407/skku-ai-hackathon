@@ -1,7 +1,7 @@
 import 'server-only';
 import { askJSON } from './llm';
 import { formatLines } from './context';
-import { DONT_KNOW } from './config';
+import { CONFIG, DONT_KNOW } from './config';
 import { normalizeAnswer } from './distribution';
 import type {
   DistributionItem, Misconception, P1Input, P1Result, P2Input, P2Result, P3Input, P3Result,
@@ -279,9 +279,49 @@ export async function analyzeAnswers(input: P3Input): Promise<P3Result | null> {
   return r ? validateP3(r, input) : null;
 }
 
-/** P6 교안 PDF 핵심 용어 추출 */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// ───────────── P6 교안 PDF 핵심 용어 추출 ─────────────
+
+export const P6_SYSTEM = `너는 강의 자료에서 학생이 질문할 때 쓸 만한 핵심 용어를 뽑는 도우미다.
+반드시 JSON만 출력한다.`;
+
+/** 프롬프트에 넣을 교안 텍스트 상한 (PROMPTS.md P6: 앞부분 약 2만 자) */
+export const P6_MAX_CHARS = 20000;
+const P6_MAX_TERMS = 40;
+const P6_MAX_TERM_LEN = 30;
+
+export function p6User(text: string): string {
+  return `다음 강의 자료에서 학생이 질문할 때 쓸 만한 핵심 용어를 최대 ${P6_MAX_TERMS}개 뽑아라.
+- 강의의 개념·공식·기호 이름을 우선한다. 쪽 번호, 날짜, 사람 이름, 일반 단어는 뺀다.
+- 수식 기호는 한글 읽는 법도 함께 넣어라 (예: 기호와 그 이름을 각각 한 항목으로).
+- 자료에 나온 표기를 그대로 쓴다. 자료에 없는 용어를 지어내지 않는다.
+
+[강의 자료]
+${text.slice(0, P6_MAX_CHARS)}
+
+출력 형식 (JSON 하나만. <>는 설명이므로 실제 값으로 바꾼다):
+{ "glossary": [<핵심 용어 문자열>] }`;
+}
+
+/** P6 출력 검증: 문자열만, 공백 정리, 중복 제거, 너무 긴 것 제외, 최대 40개. 테스트를 위해 export */
+export function validateP6(r: Record<string, unknown>): string[] {
+  if (!Array.isArray(r.glossary)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const g of r.glossary) {
+    const t = str(g).replace(/\s+/g, ' ');
+    const key = t.toLowerCase();
+    if (!t || t.length > P6_MAX_TERM_LEN || seen.has(key)) continue;
+    seen.add(key);
+    out.push(t);
+    if (out.length >= P6_MAX_TERMS) break;
+  }
+  return out;
+}
+
+/** P6 교안 PDF 핵심 용어 추출. 입력이 길어 제한 시간을 기본의 3배로 둔다. 실패하거나 0개면 null */
 export async function extractGlossary(text: string): Promise<string[] | null> {
-  // TODO(T-44, A)
-  return null;
+  if (!text.trim()) return null;
+  const r = await askJSON<Record<string, unknown>>(P6_SYSTEM, p6User(text), CONFIG.LLM_TIMEOUT_MS * 3);
+  const terms = r ? validateP6(r) : [];
+  return terms.length ? terms : null;
 }
