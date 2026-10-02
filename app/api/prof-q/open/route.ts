@@ -2,16 +2,10 @@ import { DONT_KNOW } from '@/lib/config';
 import { sbAdmin } from '@/lib/supabase/server';
 import type { OpenRes, ProfQType } from '@/lib/types';
 import { badRequest, fail, id, ok, readJson, serverError, str } from '../../_lib/http';
-import { closesAtFrom, durationOf } from '../../_lib/profq';
+import { activeOpenQuestion, closesAtFrom, durationOf } from '../../_lib/profq';
 import { liveRoom, normRoomId } from '../../_lib/room';
 
 const TYPES: ProfQType[] = ['choice', 'short', 'open'];
-
-/** 학생 화면에는 open 질문을 하나만 띄우므로, 진행 중인 질문이 있으면 먼저 마감하게 한다 */
-async function hasOpen(roomId: string): Promise<boolean | null> {
-  const { data, error } = await sbAdmin().from('prof_questions').select('id').eq('room_id', roomId).eq('status', 'open').limit(1);
-  return error ? null : data.length > 0;
-}
 
 /**
  * POST /api/prof-q/open — 학생에게 보내기 (SPEC §8.4, 흐름 B ④)
@@ -32,9 +26,10 @@ export async function POST(req: Request) {
     if (pq.status !== 'pending') return fail(409, 'NOT_PENDING', '이미 처리된 질문입니다');
     const r = await liveRoom(pq.room_id);
     if ('error' in r) return r.error;
-    const open = await hasOpen(pq.room_id);
-    if (open === null) return serverError();
-    if (open) return fail(409, 'PROFQ_OPEN', '진행 중인 질문을 먼저 마감해 주세요');
+    // 학생 화면에는 open 질문을 하나만 띄운다. 시간이 지난 질문은 여기서 마감되어 막지 않는다
+    const active = await activeOpenQuestion(pq.room_id);
+    if ('error' in active) return active.error;
+    if (active.open) return fail(409, 'PROFQ_OPEN', '진행 중인 질문을 먼저 마감해 주세요');
 
     const closesAt = closesAtFrom(sec);
     const { data, error: e } = await db
@@ -65,9 +60,9 @@ export async function POST(req: Request) {
 
   const r = await liveRoom(normRoomId(roomId));
   if ('error' in r) return r.error;
-  const open = await hasOpen(r.room.id);
-  if (open === null) return serverError();
-  if (open) return fail(409, 'PROFQ_OPEN', '진행 중인 질문을 먼저 마감해 주세요');
+  const active = await activeOpenQuestion(r.room.id);
+  if ('error' in active) return active.error;
+  if (active.open) return fail(409, 'PROFQ_OPEN', '진행 중인 질문을 먼저 마감해 주세요');
 
   const closesAt = closesAtFrom(sec);
   const { data, error } = await db
