@@ -1,0 +1,41 @@
+id	role	priority	milestone	title	depends	done
+T-00	B	P0	M0 킥오프	저장소 생성, Next.js(TS·Tailwind·App Router) 초기화, Vercel·Supabase 연결, `.env` 공유	-	main 배포 URL이 HTTPS로 열림
+T-01	B	P0	M0 킥오프	`supabase/schema.sql` 적용, Realtime 활성화	T-00	테이블 6개 + 뷰 1개 확인
+T-02	B+전원	P0	M0 킥오프	`lib/types.ts`, `lib/config.ts`, `lib/supabase/{server,client}.ts`, `lib/mock.ts` 작성·리뷰	T-00	전원 승인 후 병합
+T-03	전원	P0	M0 킥오프	SPEC §11.2 결정 사항 D-1~D-4 기본안 합의 (15분)	-	SPEC·PROPOSAL에 반영
+T-04	A	P0	M0 킥오프	`lib/context.ts`, `lib/llm.ts`, `lib/prompts.ts` **시그니처만** 있는 함수 커밋	T-02	B가 import 가능
+T-10	P	P0	M1 뼈대	`/prof/[room]` 레이아웃 (상단 바, 질문 목록, 교수 질문 패널), 방 코드·QR. 자막 영역 없음	T-02	목 데이터로 전체 화면 표시
+T-11	P	P0	M1 뼈대	`lib/speech.ts`: 음성 인식 훅 (ko-KR, final → `/api/transcript`, 자동 재시작, 🟢/🔴 상태만 표시, 인식 결과 미표시)	T-31	30초 말하면 DB에 문장 저장, 화면에 문장이 보이지 않음
+T-12	P	P0	M1 뼈대	가짜 강의 모드: `scripts/demo-lecture.json`을 delay대로 `/api/transcript`에 전송 (숨김 버튼)	T-31	마이크 없이 인식 결과가 쌓임
+T-13	P	P0	M2 흐름 A 연결	질문 목록: Realtime 구독 + 주기 조회 전환, 인원 내림차순	T-33	학생 질문 후 2초 안에 갱신
+T-14	P	P0	M2 흐름 A 연결	`speak()` + [질문 읽어 주기]: 버튼을 눌렀을 때만 안 읽은 묶음 중 최대 인원 낭독, `read_aloud` 표시	T-13	버튼 없이는 음성이 나오지 않음
+T-15	P	P0	M3 흐름 B 연결	교수 질문 후보 감지: 어미 정규식 + 5초 이후 발화 수집 → `/api/prof-q/detect`	T-11, T-34	대본의 실제 질문에만 알림
+T-16	P	P0	M3 흐름 B 연결	교수 질문 패널: 감지 알림 [보내기]/[무시], 남은 시간·응답 수, [마감](시간 종료 시 자동), 결과(분포 막대·흔한 오해·다시 설명할 내용) + [요약 읽어 주기]	T-34, T-36	M3 완료 기준 통과
+T-17	P	P1	M4 보완·평가	[직접 질문하기]: 문항·형식·선택지 입력 → `/api/prof-q/open`	T-16	직접 입력 질문이 학생 화면에 표시
+T-18	P	P1	M4 보완·평가	[수업 종료] → `/api/room/end`	T-30	종료 후 transcripts 비어 있음
+T-20	S	P0	M1 뼈대	시작 화면: [수업 만들기](제목·용어집 → `/api/room`, PDF 선택 업로드 → `/api/room/material`) / [수업 참여](코드)	T-30	수업방 생성 후 교수 화면 이동
+T-21	S	P0	M1 뼈대	`/s/[room]` 레이아웃, 익명 ID 생성·저장, 연결 상태	T-02	목 데이터로 화면 표시
+T-22	S	P0	M2 흐름 A 연결	질문 입력 → `/api/question`, `review`/`rejected`/`sent(fallback)` 세 응답 처리, 안내 문구	T-32	세 응답별 화면 확인
+T-23	S	P0	M2 흐름 A 연결	승인 창: "이렇게 보낼까요?" + 다듬은 질문, [보내기]/[취소], 후보 문장 버튼 → `/api/question/confirm`. **강의 원문 미표시**	T-33	보내기 후 인원 표시, 취소 후 목록에서 사라짐
+T-24	S	P0	M3 흐름 B 연결	내 질문 목록 (localStorage) + "n명이 같은 질문을 했습니다" 실시간	T-23	다른 휴대폰 질문 시 인원 증가
+T-25	S	P0	M3 흐름 B 연결	교수 질문 카드: open 구독, 남은 시간, 선택형·단답형·서술형, 제출, 409/410 처리	T-35	1인 1회, 마감 후 비활성
+T-26	S	P1	M4 보완·평가	모바일 UI 다듬기 (아이폰·안드로이드 실기기), 발표 자료 디자인 지원	T-25	실기기 2종 확인
+T-30	B	P0	M1 뼈대	`/api/room` (방 코드 생성·중복 확인), `/api/room/end` (transcripts 삭제, status='ended')	T-01	SPEC §8.1 형식
+T-31	B	P0	M1 뼈대	`/api/transcript`	T-01	서버 시각으로 저장
+T-32	B	P0	M2 흐름 A 연결	`/api/question`: 맥락 조회 → P1 → 무관·부적절 폐기(저장 안 함) / 관련 pending 저장 / AI 실패 시 원문 전송	T-04, T-41	SPEC §8.3 세 가지 응답, 제외 질문이 DB에 없음
+T-33	B	P0	M2 흐름 A 연결	`/api/question/confirm` + `lib/cluster.ts` (send·cancel·후보 선택, 강의 시점 기준 묶기)	T-32	같은 문장을 가리킨 질문이 한 묶음
+T-34	B	P0	M3 흐름 B 연결	`/api/prof-q/detect` (P2, 진행 중 질문 있으면 보류), `/open` (감지·직접), `/dismiss`	T-42	SPEC §8.4
+T-35	B	P0	M3 흐름 B 연결	`/api/answer`: 1인 1회(409), 마감(410)	T-34	중복·마감 처리
+T-36	B	P0	M3 흐름 B 연결	`/api/prof-q/close`: 분포 코드 계산 + P3 + 실패 대체	T-35, T-43	summary 저장
+T-37	B	P1	M4 보완·평가	`/api/room/material`: PDF 텍스트 추출(`pdf-parse`) → P6 → glossary 저장	T-44	업로드 후 용어집 저장
+T-38	B	P0	M5 시연 준비	시연 환경: 배포 환경 변수 점검, 백업 수업방 데이터	M4	체크리스트 통과
+T-40	A	P0	M1 뼈대	`lib/llm.ts` (공급자 전환, JSON 모드, 제한 시간·null 반환), `lib/context.ts`	T-04	샘플 호출 성공
+T-41	A	P0	M2 흐름 A 연결	P1 `interpretQuestion`: 분류(관련/무관/부적절) + 시점 매칭 + 다듬기 + 결과 검증	T-40	대본 기준 "방금 그거" 정답, "점심 뭐 먹지" 무관
+T-42	A	P0	M2 흐름 A 연결	P2 `judgeProfQuestion` + 검증 ("모르겠어요" 보정)	T-40	수사적 질문 제외
+T-43	A	P0	M3 흐름 B 연결	P3 `analyzeAnswers` + 실패 대체	T-40	오해 1~2개, 정중한 요약문
+T-44	A	P1	M3 흐름 B 연결	P6 `extractGlossary`	T-40	샘플 PDF에서 용어 추출
+T-45	A	P0	M1 뼈대	`scripts/demo-lecture.json` 데모 대본 + 평가 데이터 E1~E3	-	개념 3~4개, 수사적/실제 질문 포함
+T-46	A	P1	M3 흐름 B 연결	`scripts/eval.ts` + `npm run eval` + `docs/EVAL_RESULTS.md`	T-41, T-42, T-45	E1~E4 수치 출력
+T-47	A	P1	M4 보완·평가	평가 기반 프롬프트 개선 (PR마다 eval 결과 첨부)	T-46	개선 전후 수치 기록
+T-48	A	P0	M5 시연 준비	발표 자료 + 3분 시연 대본 + 예상 질문 답변	M3	리허설 가능
+T-50	A+B	P2	P2 여유	P4 의미 기반 묶기, P5 대표 질문 다시 쓰기 (FR-P3)	-	-
