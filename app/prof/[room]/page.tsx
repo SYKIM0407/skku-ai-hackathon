@@ -33,7 +33,6 @@ export default function ProfPage() {
 function ProfRoom({ roomId }: { roomId: string }) {
   const [listen, setListen] = useState(false);
   const [showQr, setShowQr] = useState(false);
-  const [demoOpen, setDemoOpen] = useState(false);
   const [notice, setNotice] = useState('');
   const [stay, setStay] = useState(false); // 종료 후 결과를 더 보려고 이 화면에 남기로 함
 
@@ -86,7 +85,6 @@ function ProfRoom({ roomId }: { roomId: string }) {
   async function endClass() {
     if (!window.confirm('수업을 종료할까요? 강의 인식 결과가 삭제되고 학생들은 더 이상 질문할 수 없습니다.')) return;
     setListen(false);
-    feed.stopDemo();
     const res = await postJSON<OkRes>('/api/room/end', { roomId });
     setNotice(res.ok ? '수업이 종료되었습니다. 강의 인식 결과를 삭제했습니다.' : res.message);
     reloadRoom();
@@ -164,40 +162,6 @@ function ProfRoom({ roomId }: { roomId: string }) {
           <ProfQuestionPanel roomId={roomId} questions={profQs} reload={reloadProfQs} disabled={ended} />
         </aside>
       </main>
-
-      {/* 가짜 강의 모드 (FR-T5): 눈에 띄지 않는 숨김 버튼 */}
-      {!ended && (
-        <div className="fixed right-3 bottom-3 text-xs">
-          {demoOpen ? (
-            <div className="flex items-center gap-2 rounded-lg bg-white/90 p-2 shadow">
-              <span className="text-gray-500">
-                데모 대본 {feed.demo.index}/{feed.demoTotal}
-              </span>
-              {feed.demo.playing ? (
-                <button onClick={feed.stopDemo} className="rounded bg-gray-200 px-2 py-1">
-                  정지
-                </button>
-              ) : (
-                <>
-                  <button onClick={() => feed.playDemo(1)} className="rounded bg-gray-200 px-2 py-1">
-                    재생
-                  </button>
-                  <button onClick={() => feed.playDemo(3)} className="rounded bg-gray-200 px-2 py-1">
-                    ×3
-                  </button>
-                </>
-              )}
-              <button onClick={() => setDemoOpen(false)} className="px-1 text-gray-400">
-                ✕
-              </button>
-            </div>
-          ) : (
-            <button onClick={() => setDemoOpen(true)} aria-label="데모" className="h-6 w-6 rounded-full opacity-10 hover:opacity-60">
-              🎬
-            </button>
-          )}
-        </div>
-      )}
 
       {ended && !stay && (
         <RoomEndedOverlay
