@@ -30,7 +30,7 @@
 - AI: `lib/llm.ts`의 `askJSON()`만 사용 (공급자는 env `LLM_PROVIDER`로 전환)
 - 음성 인식: Web Speech API (`webkitSpeechRecognition`, `ko-KR`), 교수 화면 전용
 - 음성 출력: `speechSynthesis`, 교수 화면 전용
-- PDF 텍스트 추출: `pdf-parse` (서버)
+- PDF 텍스트 추출: `pdfjs-dist` (교수 브라우저, `lib/pdf-text.ts`). 서버는 텍스트만 받는다
 
 ## 명령어
 

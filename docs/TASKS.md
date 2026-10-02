@@ -123,7 +123,7 @@ export async function extractGlossary(text: string): Promise<string[] | null>;  
 | T-34 | P0 | `/api/prof-q/detect` (P2, 진행 중 질문 있으면 보류), `/open` (감지·직접), `/dismiss` | T-42 | SPEC §8.4 |
 | T-35 | P0 | `/api/answer`: 1인 1회(409), 마감(410) | T-34 | 중복·마감 처리 |
 | T-36 | P0 | `/api/prof-q/close`: 분포 코드 계산 + P3 + 실패 대체 | T-35, T-43 | summary 저장 |
-| T-37 | P1 | `/api/room/material`: PDF 텍스트 추출(`pdf-parse`) → P6 → glossary 저장 | T-44 | 업로드 후 용어집 저장 |
+| T-37 | P1 | `/api/room/material`: 브라우저에서 추출한 교안 텍스트 → P6 → glossary 저장 | T-44 | 업로드 후 용어집 저장 |
 | T-38 | P0 | 시연 환경: 배포 환경 변수 점검, 백업 수업방 데이터 | M4 | 체크리스트 통과 |
 
 ### A · AI·품질

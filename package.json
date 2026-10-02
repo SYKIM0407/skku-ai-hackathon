@@ -15,7 +15,7 @@
     "@supabase/supabase-js": "^2.117.2",
     "next": "16.3.8",
     "openai": "^7.27.0",
-    "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "^5.4.296",
     "qrcode.react": "^4.2.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",

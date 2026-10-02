@@ -34,7 +34,7 @@ claude
 ```
 T-00 해줘. Next.js(App Router, TypeScript, Tailwind, ESLint, npm)를 이 저장소에 초기화하되
 기존 문서 파일(CLAUDE.md, README.md, docs/, supabase/, scripts/, .github/)은 덮어쓰지 마.
-@supabase/supabase-js, qrcode.react, pdf-parse, vitest, tsx도 설치하고
+@supabase/supabase-js, qrcode.react, pdfjs-dist, vitest, tsx도 설치하고
 package.json에 "test": "vitest run", "eval": "tsx scripts/eval.ts" 스크립트를 추가해 줘.
 .gitignore에 .env*.local이 들어 있는지 확인하고, 빌드가 통과하면 feat/T-00-init 브랜치로 커밋해 줘.
 ```
@@ -45,7 +45,7 @@ package.json에 "test": "vitest run", "eval": "tsx scripts/eval.ts" 스크립트
 npx create-next-app@latest _app --ts --tailwind --eslint --app --no-src-dir --import-alias "@/*" --use-npm
 rsync -a --ignore-existing _app/ ./      # 기존 문서는 그대로 두고 복사
 rm -rf _app
-npm i @supabase/supabase-js qrcode.react pdf-parse
+npm i @supabase/supabase-js qrcode.react pdfjs-dist
 npm i -D vitest tsx
 # package.json scripts에 "test": "vitest run", "eval": "tsx scripts/eval.ts" 추가
 npm run build
