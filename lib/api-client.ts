@@ -25,6 +25,23 @@ export async function postJSON<T>(path: string, body: unknown): Promise<ApiResul
   }
 }
 
+/** multipart 업로드 (교안 PDF). postJSON과 같은 결과 형식 */
+export async function postForm<T>(path: string, form: FormData): Promise<ApiResult<T>> {
+  try {
+    const res = await fetch(path, { method: 'POST', body: form });
+    const json = await res.json().catch(() => null);
+    if (res.ok) return { ok: true, data: json as T };
+    return {
+      ok: false,
+      status: res.status,
+      code: json?.error?.code ?? 'UNKNOWN',
+      message: json?.error?.message ?? '잠시 후 다시 시도해 주세요',
+    };
+  } catch {
+    return { ok: false, status: 0, code: 'NETWORK', message: '네트워크 연결을 확인해 주세요' };
+  }
+}
+
 /** localStorage 안전 래퍼 (시크릿 창·차단 환경에서도 화면이 깨지지 않게) */
 export const store = {
   get<T>(key: string, fallback: T): T {

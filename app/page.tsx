@@ -1,9 +1,11 @@
 'use client';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { postJSON } from '@/lib/api-client';
-import type { CreateRoomRes } from '@/lib/types';
+import { useRef, useState } from 'react';
+import { postForm, postJSON } from '@/lib/api-client';
+import type { CreateRoomRes, MaterialRes } from '@/lib/types';
+
+const MAX_PDF_MB = 10;
 
 /** 시작 화면 (SPEC §9.1): 수업 만들기 / 수업 참여 */
 export default function Home() {
@@ -11,21 +13,54 @@ export default function Home() {
   const [title, setTitle] = useState('');
   const [glossary, setGlossary] = useState('');
   const [code, setCode] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState<'' | 'room' | 'material'>('');
   const [error, setError] = useState('');
+  // 교안 업로드가 실패해도 수업방은 이미 만들어졌으므로 그대로 시작할 수 있게 둔다
+  const [createdRoom, setCreatedRoom] = useState('');
+
+  function pickFile(f: File | null) {
+    setError('');
+    if (f && f.size > MAX_PDF_MB * 1024 * 1024) {
+      setError(`PDF는 ${MAX_PDF_MB}MB까지 올릴 수 있어요`);
+      if (fileInput.current) fileInput.current.value = '';
+      return setFile(null);
+    }
+    setFile(f);
+  }
 
   async function createRoom(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim() || busy) return;
-    setBusy(true);
     setError('');
     const terms = glossary.split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
-    const res = await postJSON<CreateRoomRes>('/api/room', { title: title.trim(), glossary: terms });
-    if (res.ok) router.push(`/prof/${res.data.roomId}`);
-    else {
-      setError(res.message);
-      setBusy(false);
+
+    let roomId = createdRoom;
+    if (!roomId) {
+      setBusy('room');
+      const res = await postJSON<CreateRoomRes>('/api/room', { title: title.trim(), glossary: terms });
+      if (!res.ok) {
+        setError(res.message);
+        return setBusy('');
+      }
+      roomId = res.data.roomId;
+      setCreatedRoom(roomId);
     }
+
+    // 교안 PDF → 텍스트 추출 → 핵심 용어를 용어집에 합친다 (FR-R5). 직접 입력한 용어는 유지된다
+    if (file) {
+      setBusy('material');
+      const form = new FormData();
+      form.append('roomId', roomId);
+      form.append('file', file);
+      const up = await postForm<MaterialRes>('/api/room/material', form);
+      if (!up.ok) {
+        setError(`${up.message} — 수업은 만들어졌어요. 그대로 시작하거나 다른 PDF를 골라 다시 눌러 주세요.`);
+        return setBusy('');
+      }
+    }
+    router.push(`/prof/${roomId}`);
   }
 
   function join(e: React.FormEvent) {
@@ -76,7 +111,17 @@ export default function Home() {
               />
             </label>
             <label className="text-slate-200">
-              핵심 용어 (선택, 쉼표로 구분)
+              강의 교안 PDF <span className="text-sm text-slate-400">(선택, {MAX_PDF_MB}MB까지 · 핵심 용어를 자동으로 뽑아요)</span>
+              <input
+                ref={fileInput}
+                type="file"
+                accept="application/pdf,.pdf"
+                onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
+                className="mt-2 block w-full text-sm text-slate-300 file:mr-3 file:rounded-lg file:border file:border-[#24407e] file:bg-[#13254d] file:px-3 file:py-2 file:text-sm file:font-medium file:text-[#5b9bff] hover:file:bg-[#1a3061]"
+              />
+            </label>
+            <label className="text-slate-200">
+              핵심 용어 <span className="text-sm text-slate-400">(선택, 쉼표로 구분 · PDF에서 뽑은 용어와 합쳐져요)</span>
               <input
                 value={glossary}
                 onChange={(e) => setGlossary(e.target.value)}
@@ -85,12 +130,17 @@ export default function Home() {
               />
             </label>
             <button
-              disabled={!title.trim() || busy}
+              disabled={!title.trim() || !!busy}
               className="mt-auto rounded-xl border-2 border-[#2563eb] bg-[#0b2a6b] py-4 text-lg font-semibold hover:bg-[#10378a] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {busy ? '만드는 중…' : '수업 만들기'}
+              {busy === 'room' ? '만드는 중…' : busy === 'material' ? '교안에서 용어 뽑는 중…' : createdRoom ? '다시 시도' : '수업 만들기'}
             </button>
             {error && <p className="text-sm text-red-400">{error}</p>}
+            {createdRoom && !busy && (
+              <button type="button" onClick={() => router.push(`/prof/${createdRoom}`)} className="text-sm text-[#5b9bff] underline">
+                교안 없이 수업 시작하기
+              </button>
+            )}
           </form>
         </div>
       </main>

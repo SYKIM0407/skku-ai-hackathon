@@ -97,7 +97,7 @@
 ① 교수 브라우저: 인식된 문장이 질문 어미 규칙에 해당하면 이후 5초간 발화 수집
 ② AI 호출 1회 (P2): 실제 질문 여부 판별(수사적 질문 제외) + 문항 정리 + 형식·선택지 생성
 ③ 교수 화면 알림 "학생들에게 보낼까요?" [보내기] / [무시]
-④ 학생 화면에 문항과 남은 시간 표시 (기본 45초), 학생 익명 응답 (1인 1회)
+④ 학생 화면에 문항 표시 (교수가 [마감]할 때까지. 시간 제한을 걸면 남은 시간도 표시), 학생 익명 응답 (1인 1회)
 ⑤ 시간 종료 또는 [마감] → 서버가 답변 분포 계산
 ⑥ AI 호출 1회 (P3): 흔한 오해, 다시 설명할 내용, 음성 요약문
 ⑦ 교수 화면 결과 표시, 교수가 [요약 읽어 주기]를 누르면 음성 낭독
@@ -162,7 +162,7 @@
 | FR-B2 | AI가 실제 질문/수사적 질문을 판별하고, 실제 질문이면 문항·형식·선택지·예상 정답을 만든다 | P0 |
 | FR-B3 | 교수 화면에 "학생들에게 보낼까요?" 알림과 [보내기]·[무시]를 표시한다 (P-6) | P0 |
 | FR-B4 | 교수는 감지와 별도로 질문을 직접 입력해 보낼 수 있다 (P-7) | P1 |
-| FR-B5 | [보내기] 시 학생 화면 상단에 문항과 남은 시간을 표시한다 (기본 45초) (S-6) | P0 |
+| FR-B5 | [보내기] 시 학생 화면 상단에 문항을 표시한다. 기본은 교수가 [마감]할 때까지 받고, 시간 제한(45초)을 걸면 남은 시간도 표시한다 (S-6) | P0 |
 | FR-B6 | 학생은 1인 1회 응답한다. 선택형의 마지막 선택지는 항상 "모르겠어요" (S-6) | P0 |
 | FR-B7 | 시간 종료 또는 [마감] 시 답변 분포를 서버 코드로 계산한다 (P-8) | P0 |
 | FR-B8 | AI가 흔한 오해(최대 2개), 다시 설명할 내용 1문장, 음성 요약문을 만든다 (P-8) | P0 |
@@ -447,14 +447,18 @@ export type ApiError = { error: { code: string; message: string } };
 **`POST /api/prof-q/open`**
 ```jsonc
 // 감지된 질문 보내기
-{ "profQuestionId": 12, "durationSec": 45 }
+{ "profQuestionId": 12, "durationSec": 0 }
 // 직접 질문하기 (FR-B4)
-{ "roomId": "K7Q2", "question": "…", "type": "choice", "options": ["…", "모르겠어요"], "durationSec": 45 }
+{ "roomId": "K7Q2", "question": "…", "type": "choice", "options": ["…", "모르겠어요"], "durationSec": 0 }
 // res 200
-{ "profQuestionId": 12, "closesAt": "2026-10-10T05:12:45Z" }
+{ "profQuestionId": 12, "closesAt": null }                  // durationSec 0 = 시간 제한 없음, 교수가 [마감]할 때까지 받음
+{ "profQuestionId": 12, "closesAt": "2026-10-10T05:12:45Z" } // durationSec > 0 (10~300초)이면 시간 종료 시 교수 화면이 자동 마감
 ```
+- `durationSec`를 생략하면 `CONFIG.PROFQ_DURATION_SEC`. 교수 화면 기본은 **제한 없음(0)**
 
 **`POST /api/prof-q/dismiss`** `{ "profQuestionId": 12 }` → `{ "ok": true }`
+- `pending`(감지 알림 [무시]) 또는 `closed`(지난 질문 [삭제]) → `dismissed`. 응답·결과 행은 지우지 않고 교수 화면 목록에서만 뺀다
+- 지난 질문(`closed`)은 수업 종료 전까지 교수 화면에 계속 보인다 (최근 것 먼저, 펼치면 결과)
 
 **`POST /api/prof-q/close`**
 ```jsonc
@@ -469,7 +473,7 @@ export type ApiError = { error: { code: string; message: string } };
 ```
 - 분포는 코드로 계산, AI(P3)는 오해·추천·요약문만
 - P3 실패 시 `misconceptions: []`, `suggestion: null`, `spoken_summary`는 분포로 코드 생성
-- 시간 종료 시 교수 화면이 자동으로 호출한다
+- 교수가 [마감]을 누르면 호출. 시간 제한을 둔 질문은 시간 종료 시 교수 화면이 자동으로 호출한다
 
 **`POST /api/answer`**
 ```jsonc

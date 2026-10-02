@@ -116,11 +116,13 @@ export interface ClusterReadReq { clusterId: number }
 export interface DetectReq { roomId: string; spoken: string; after: string }
 export type DetectRes = { detected: true; profQuestionId: number } | { detected: false };
 
+/** durationSec: 응답 시간(초). 0이면 시간 제한 없음(교수가 [마감]할 때까지). 생략하면 CONFIG.PROFQ_DURATION_SEC */
 export type OpenReq =
   | { profQuestionId: number; durationSec?: number }
   | { roomId: string; question: string; type: ProfQType; options?: string[]; durationSec?: number };
-export interface OpenRes { profQuestionId: number; closesAt: string }
+export interface OpenRes { profQuestionId: number; closesAt: string | null }   // 시간 제한 없으면 null
 
+/** pending(감지 알림 [무시]) 또는 closed(지난 질문 [삭제]) → dismissed. 응답·결과는 지우지 않고 목록에서만 뺀다 */
 export interface DismissReq { profQuestionId: number }
 export interface CloseReq { profQuestionId: number }
 export interface CloseRes { summary: ProfQSummary }
