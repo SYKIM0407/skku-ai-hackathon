@@ -1,11 +1,20 @@
 'use client';
 import type { Cluster } from '@/lib/types';
 
-/** 질문 묶음 목록, 인원 내림차순 (FR-P1). 학생 원문은 없고 대표 질문만 보인다 */
+/** 질문 묶음 목록 (FR-P1). 정렬은 화면에서 정해 넘긴다. 학생 원문은 없고 대표 질문만 보인다 */
 export function ClusterList({ clusters }: { clusters: Cluster[] | undefined }) {
-  if (!clusters) return <p className="py-10 text-center text-gray-400">불러오는 중…</p>;
+  if (!clusters) return <p className="py-10 text-center text-slate-500">불러오는 중…</p>;
   if (!clusters.length)
-    return <p className="py-16 text-center text-lg text-gray-400">아직 들어온 질문이 없습니다</p>;
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 py-20 text-center">
+        <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500" aria-hidden>
+          <path d="M7 18H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-7l-4 3Z" />
+          <path d="M8.5 11h.01M12 11h.01M15.5 11h.01" strokeWidth="2.5" />
+        </svg>
+        <p className="text-2xl font-bold">아직 들어온 질문이 없습니다</p>
+        <p className="text-slate-400">학생들이 질문을 보내면 여기에 표시됩니다</p>
+      </div>
+    );
 
   return (
     <ul className="flex flex-col gap-3">
@@ -13,19 +22,19 @@ export function ClusterList({ clusters }: { clusters: Cluster[] | undefined }) {
         <li
           key={c.id}
           className={`flex items-center gap-4 rounded-xl border p-4 ${
-            c.read_aloud ? 'border-gray-200 bg-gray-50 text-gray-500' : 'border-indigo-200 bg-white'
+            c.read_aloud ? 'border-[#1d3266] bg-[#0a1428] text-slate-500' : 'border-[#24407e] bg-[#08122a] text-slate-100'
           }`}
         >
           <span
             className={`flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl font-bold ${
-              c.read_aloud ? 'bg-gray-200 text-gray-500' : 'bg-indigo-600 text-white'
+              c.read_aloud ? 'bg-[#13254d] text-slate-400' : 'bg-[#0b5cff] text-white'
             }`}
           >
             <span className="text-xl leading-none">{c.count}</span>
             <span className="text-[10px] font-medium">명</span>
           </span>
           <p className="flex-1 text-lg leading-snug">{c.title}</p>
-          {c.read_aloud && <span className="shrink-0 rounded-full bg-gray-200 px-2 py-0.5 text-xs">읽음</span>}
+          {c.read_aloud && <span className="shrink-0 rounded-full bg-[#13254d] px-2 py-0.5 text-xs text-slate-400">읽음</span>}
         </li>
       ))}
     </ul>

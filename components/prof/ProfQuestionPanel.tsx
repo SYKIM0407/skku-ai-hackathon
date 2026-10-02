@@ -43,13 +43,13 @@ export function ProfQuestionPanel({
         ) : (
           <button
             onClick={() => setComposing(true)}
-            className="rounded-xl border-2 border-dashed border-gray-300 py-3 font-medium text-gray-600 hover:border-indigo-400 hover:text-indigo-600"
+            className="flex items-center justify-center gap-3 rounded-xl border-2 border-[#2563eb] bg-[#0b1f4d] py-4 text-lg font-semibold text-white hover:bg-[#10306f]"
           >
-            ✏️ 직접 질문하기
+            <PencilIcon /> 직접 질문하기
           </button>
         ))}
       {!pending && !open && !past.length && (
-        <p className="text-center text-sm text-gray-400">
+        <p className="py-2 text-center leading-relaxed text-slate-400">
           강의 중 &ldquo;~일까요?&rdquo;처럼 질문하시면
           <br />
           학생들에게 보낼지 여기서 물어봅니다
@@ -57,7 +57,7 @@ export function ProfQuestionPanel({
       )}
       {past.length > 0 && (
         <section>
-          <h3 className="mb-2 text-sm font-semibold text-gray-500">지난 질문 · {past.length}개</h3>
+          <h3 className="mb-2 text-sm font-semibold text-slate-400">지난 질문 · {past.length}개</h3>
           <ul className="flex flex-col gap-3">
             {past.map((q, i) => (
               <li key={q.id}>
@@ -74,8 +74,8 @@ export function ProfQuestionPanel({
 /** 보내기 옵션: 기본은 시간 제한 없음(교수가 [마감]), 원하면 45초 제한 */
 function DurationToggle({ timed, onChange }: { timed: boolean; onChange: (v: boolean) => void }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-600">
-      <input type="checkbox" checked={timed} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4 accent-indigo-600" />
+    <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-300">
+      <input type="checkbox" checked={timed} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4 accent-[#0b5cff]" />
       {CONFIG.PROFQ_DURATION_SEC}초 뒤 자동 마감
     </label>
   );
@@ -83,7 +83,7 @@ function DurationToggle({ timed, onChange }: { timed: boolean; onChange: (v: boo
 
 function Options({ q }: { q: Pick<ProfQuestion, 'type' | 'options' | 'expected_answer'> }) {
   return (
-    <p className="text-sm text-gray-500">
+    <p className="text-sm text-slate-400">
       {TYPE_LABEL[q.type]}
       {q.options && ` · ${q.options.join(' / ')}`}
       {q.expected_answer && ` · 예상 정답: ${q.expected_answer}`}
@@ -106,9 +106,9 @@ function DetectedAlert({ q, reload }: { q: ProfQuestion; reload: () => void }) {
     reload();
   }
   return (
-    <section className="rounded-2xl border-2 border-amber-400 bg-amber-50 p-5">
-      <p className="text-sm font-semibold text-amber-700">🔔 질문이 감지되었습니다. 학생들에게 보낼까요?</p>
-      <p className="mt-2 text-xl font-semibold text-gray-900">{q.question}</p>
+    <section className="rounded-2xl border-2 border-amber-400/70 bg-amber-400/10 p-5">
+      <p className="text-sm font-semibold text-amber-300">🔔 질문이 감지되었습니다. 학생들에게 보낼까요?</p>
+      <p className="mt-2 text-xl font-semibold text-white">{q.question}</p>
       <div className="mt-1">
         <Options q={q} />
       </div>
@@ -119,15 +119,15 @@ function DetectedAlert({ q, reload }: { q: ProfQuestion; reload: () => void }) {
         <button
           disabled={busy}
           onClick={() => act('open')}
-          className="flex-1 rounded-lg bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-700 disabled:bg-gray-300"
+          className="flex-1 rounded-lg bg-[#0b5cff] py-3 font-semibold text-white hover:bg-[#2a72ff] disabled:opacity-40"
         >
           학생에게 보내기
         </button>
-        <button disabled={busy} onClick={() => act('dismiss')} className="rounded-lg px-5 py-3 text-gray-600 hover:bg-amber-100">
+        <button disabled={busy} onClick={() => act('dismiss')} className="rounded-lg px-5 py-3 text-slate-300 hover:bg-amber-400/10">
           무시
         </button>
       </div>
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
     </section>
   );
 }
@@ -167,28 +167,28 @@ function OpenQuestion({ q, reload }: { q: ProfQuestion; reload: () => void }) {
 
   const sec = remaining === null ? null : Math.ceil(remaining / 1000);
   return (
-    <section className="rounded-2xl border-2 border-indigo-500 bg-indigo-50 p-5">
-      <div className="flex items-center justify-between text-sm font-semibold text-indigo-700">
+    <section className="rounded-2xl border-2 border-[#0b5cff] bg-[#0c1a3d] p-5 shadow-[0_0_40px_-12px_rgba(11,92,255,0.6)]">
+      <div className="flex items-center justify-between text-sm font-semibold text-[#5b9bff]">
         <span>📢 학생들이 응답하는 중</span>
         {sec === null ? (
-          <span className="text-xs font-medium text-indigo-500">마감을 누를 때까지 받습니다</span>
+          <span className="text-xs font-medium text-[#5b9bff]/80">마감을 누를 때까지 받습니다</span>
         ) : (
           <span className="text-2xl tabular-nums">{sec > 0 ? `${sec}초` : '마감 중…'}</span>
         )}
       </div>
-      <p className="mt-2 text-xl font-semibold text-gray-900">{q.question}</p>
+      <p className="mt-2 text-xl font-semibold text-white">{q.question}</p>
       <div className="mt-1">
         <Options q={q} />
       </div>
       <div className="mt-4 flex items-center justify-between">
-        <p className="text-lg">
-          응답 <b className="text-3xl tabular-nums text-indigo-700">{answered ?? 0}</b>명
+        <p className="text-lg text-slate-200">
+          응답 <b className="text-3xl tabular-nums text-[#5b9bff]">{answered ?? 0}</b>명
         </p>
-        <button onClick={close} className="rounded-lg bg-gray-900 px-6 py-3 font-semibold text-white hover:bg-gray-700">
+        <button onClick={close} className="rounded-lg bg-[#0b5cff] px-6 py-3 font-semibold text-white hover:bg-[#2a72ff]">
           마감
         </button>
       </div>
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
     </section>
   );
 }
@@ -210,22 +210,22 @@ function Result({ q, defaultOpen, reload }: { q: ProfQuestion; defaultOpen: bool
   }
 
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <section className="rounded-2xl border border-[#24407e] bg-[#08122a]">
       <button
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
         className="flex w-full items-start justify-between gap-3 p-5 text-left"
       >
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-gray-500">
+          <p className="text-sm font-semibold text-slate-400">
             📊 응답 {s.total}명
             {!expanded && top && top.count > 0 && (
               <span className="font-normal"> · 가장 많은 답 {top.label} {Math.round(top.ratio * 100)}%</span>
             )}
           </p>
-          <p className={`mt-1 font-semibold text-gray-900 ${expanded ? 'text-lg' : 'truncate'}`}>{q.question}</p>
+          <p className={`mt-1 font-semibold text-white ${expanded ? 'text-lg' : 'truncate'}`}>{q.question}</p>
         </div>
-        <span className="shrink-0 text-gray-400">{expanded ? '▴' : '▾'}</span>
+        <span className="shrink-0 text-slate-500">{expanded ? '▴' : '▾'}</span>
       </button>
 
       {expanded && (
@@ -236,17 +236,17 @@ function Result({ q, defaultOpen, reload }: { q: ProfQuestion; defaultOpen: bool
               const dontKnow = d.label === DONT_KNOW;
               return (
                 <li key={d.label} className="grid grid-cols-[7rem_1fr_3.5rem] items-center gap-2">
-                  <span className={`truncate text-sm ${correct ? 'font-bold text-emerald-700' : 'text-gray-700'}`}>
+                  <span className={`truncate text-sm ${correct ? 'font-bold text-emerald-400' : 'text-slate-200'}`}>
                     {correct && '✓ '}
                     {d.label}
                   </span>
-                  <span className="h-6 overflow-hidden rounded bg-gray-100">
+                  <span className="h-6 overflow-hidden rounded bg-[#13254d]">
                     <span
-                      className={`block h-full ${correct ? 'bg-emerald-500' : dontKnow ? 'bg-gray-400' : 'bg-indigo-400'}`}
+                      className={`block h-full ${correct ? 'bg-emerald-500' : dontKnow ? 'bg-slate-500' : 'bg-[#3b82f6]'}`}
                       style={{ width: `${(d.count / max) * 100}%` }}
                     />
                   </span>
-                  <span className="text-right text-sm tabular-nums text-gray-600">{Math.round(d.ratio * 100)}%</span>
+                  <span className="text-right text-sm tabular-nums text-slate-300">{Math.round(d.ratio * 100)}%</span>
                 </li>
               );
             })}
@@ -254,30 +254,30 @@ function Result({ q, defaultOpen, reload }: { q: ProfQuestion; defaultOpen: bool
 
           {s.misconceptions.length > 0 && (
             <div className="mt-4">
-              <p className="text-sm font-semibold text-gray-500">흔한 오해</p>
-              <ul className="mt-1 list-disc pl-5 text-gray-800">
+              <p className="text-sm font-semibold text-slate-400">흔한 오해</p>
+              <ul className="mt-1 list-disc pl-5 text-slate-200">
                 {s.misconceptions.map((m) => (
                   <li key={m.text}>
-                    {m.text} <span className="text-sm text-gray-500">({Math.round(m.ratio * 100)}%)</span>
+                    {m.text} <span className="text-sm text-slate-400">({Math.round(m.ratio * 100)}%)</span>
                   </li>
                 ))}
               </ul>
             </div>
           )}
           {s.suggestion && (
-            <div className="mt-4 rounded-lg bg-amber-50 p-3">
-              <p className="text-sm font-semibold text-amber-700">다시 설명하면 좋을 내용</p>
-              <p className="mt-1 text-gray-800">{s.suggestion}</p>
+            <div className="mt-4 rounded-lg bg-amber-400/10 p-3">
+              <p className="text-sm font-semibold text-amber-300">다시 설명하면 좋을 내용</p>
+              <p className="mt-1 text-slate-200">{s.suggestion}</p>
             </div>
           )}
           <div className="mt-4 flex gap-2">
             <button
               onClick={() => speak(s.spoken_summary)}
-              className="flex-1 rounded-lg bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-700"
+              className="flex-1 rounded-lg bg-[#0b5cff] py-3 font-semibold text-white hover:bg-[#2a72ff]"
             >
               🔊 요약 읽어 주기
             </button>
-            <button disabled={busy} onClick={remove} className="rounded-lg px-4 py-3 text-sm text-gray-500 hover:bg-red-50 hover:text-red-600">
+            <button disabled={busy} onClick={remove} className="rounded-lg px-4 py-3 text-sm text-slate-400 hover:bg-red-500/10 hover:text-red-400">
               삭제
             </button>
           </div>
@@ -312,14 +312,14 @@ function DirectQuestionForm({ roomId, onDone, onCancel }: { roomId: string; onDo
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-5">
+    <form onSubmit={submit} className="flex flex-col gap-3 rounded-2xl border border-[#24407e] bg-[#08122a] p-5">
       <p className="font-semibold">✏️ 직접 질문하기</p>
       <input
         value={question}
         onChange={(e) => setQuestion(e.target.value)}
         placeholder="학생들에게 물어볼 질문"
         maxLength={300}
-        className="rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none"
+        className="rounded-lg border border-[#24407e] bg-[#0c1730] text-white placeholder:text-slate-500 px-3 py-2 focus:border-[#3b82f6] focus:outline-none"
       />
       <div className="flex gap-2">
         {(Object.keys(TYPE_LABEL) as ProfQType[]).map((t) => (
@@ -327,7 +327,7 @@ function DirectQuestionForm({ roomId, onDone, onCancel }: { roomId: string; onDo
             type="button"
             key={t}
             onClick={() => setType(t)}
-            className={`rounded-full px-3 py-1 text-sm ${type === t ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+            className={`rounded-full px-3 py-1 text-sm ${type === t ? 'bg-[#0b5cff] text-white' : 'bg-[#13254d] text-slate-300'}`}
           >
             {TYPE_LABEL[t]}
           </button>
@@ -339,22 +339,30 @@ function DirectQuestionForm({ roomId, onDone, onCancel }: { roomId: string; onDo
           onChange={(e) => setOptions(e.target.value)}
           rows={3}
           placeholder={`선택지를 한 줄에 하나씩 (마지막에 "${DONT_KNOW}"는 자동으로 붙어요)`}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+          className="rounded-lg border border-[#24407e] bg-[#0c1730] text-white placeholder:text-slate-500 px-3 py-2 text-sm focus:border-[#3b82f6] focus:outline-none"
         />
       )}
       <DurationToggle timed={timed} onChange={setTimed} />
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onCancel} className="rounded-lg px-4 py-2 text-gray-600 hover:bg-gray-100">
+        <button type="button" onClick={onCancel} className="rounded-lg px-4 py-2 text-slate-300 hover:bg-[#13254d]">
           취소
         </button>
         <button
           disabled={busy || !question.trim()}
-          className="rounded-lg bg-indigo-600 px-5 py-2 font-semibold text-white hover:bg-indigo-700 disabled:bg-gray-300"
+          className="rounded-lg bg-[#0b5cff] px-5 py-2 font-semibold text-white hover:bg-[#2a72ff] disabled:opacity-40"
         >
           학생에게 보내기
         </button>
       </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-400">{error}</p>}
     </form>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#4c8dff]" aria-hidden>
+      <path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+    </svg>
   );
 }

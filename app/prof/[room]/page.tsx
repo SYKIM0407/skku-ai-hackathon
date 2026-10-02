@@ -36,6 +36,7 @@ function ProfRoom({ roomId }: { roomId: string }) {
   const [demoOpen, setDemoOpen] = useState(false);
   const [notice, setNotice] = useState('');
   const [stay, setStay] = useState(false); // 종료 후 결과를 더 보려고 이 화면에 남기로 함
+  const [sort, setSort] = useState<'count' | 'recent'>('count');
 
   const { data: room, reload: reloadRoom } = useLive<Pick<Room, 'title' | 'status'> | null>(
     async () => (await sb().from('rooms').select('title, status').eq('id', roomId).maybeSingle()).data,
@@ -94,31 +95,37 @@ function ProfRoom({ roomId }: { roomId: string }) {
 
   if (room === null) {
     return (
-      <main className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
+      <main className="flex flex-1 flex-col items-center justify-center gap-4 bg-[#070d1c] p-8 text-white">
         <p className="text-lg">수업방 <b className="font-mono">{roomId}</b>을(를) 찾을 수 없습니다.</p>
-        <Link href="/" className="text-indigo-600 underline">
+        <Link href="/" className="text-[#5b9bff] underline">
           처음으로
         </Link>
       </main>
     );
   }
 
+  const sorted = sort === 'recent' ? [...(clusters ?? [])].sort((a, b) => b.id - a.id) : clusters;
+
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50">
+    <div className="flex min-h-screen flex-col bg-[#070d1c] bg-[radial-gradient(ellipse_at_top,#0c1a3a_0%,transparent_55%)] text-white">
       {/* 상단 바: 방 코드·QR·인식 상태·[질문 읽어 주기]·[수업 종료] — 자막 영역 없음 */}
-      <header className="flex flex-wrap items-center gap-4 border-b border-gray-200 bg-white px-6 py-4">
-        <div className="mr-auto">
-          <h1 className="text-xl font-bold text-gray-900">{room?.title ?? '…'}</h1>
-          <LiveBadge mode={mode} />
+      <header className="flex flex-wrap items-center gap-3 border-b border-[#16264d] bg-[#0a1226]/90 px-6 py-3">
+        <div className="mr-auto flex min-w-0 items-center gap-4">
+          <span className="text-2xl font-extrabold tracking-tight">GYAUT</span>
+          <span className="h-6 w-px bg-[#24345e]" aria-hidden />
+          <h1 className="truncate text-xl font-bold">{room?.title ?? '…'}</h1>
+          <LiveBadge mode={mode} dark />
         </div>
         <button
           onClick={() => setShowQr(true)}
-          className="flex items-center gap-3 rounded-xl border border-gray-200 px-4 py-2 hover:bg-gray-50"
+          className="flex items-center gap-3 rounded-xl border border-[#1d3266] bg-[#0c1730] px-3 py-1.5 hover:border-[#3b82f6]"
           title="크게 보기"
         >
-          <QRCodeSVG value={joinUrl} size={44} />
+          <span className="rounded bg-white p-1">
+            <QRCodeSVG value={joinUrl} size={40} />
+          </span>
           <span className="text-left">
-            <span className="block text-xs text-gray-500">참여 코드</span>
+            <span className="block text-xs text-slate-400">참여 코드</span>
             <span className="font-mono text-2xl font-bold tracking-widest">{roomId}</span>
           </span>
         </button>
@@ -126,9 +133,12 @@ function ProfRoom({ roomId }: { roomId: string }) {
           <button
             onClick={() => setListen((v) => !v)}
             title={listen ? '누르면 강의 인식을 멈춥니다' : undefined}
-            className={`flex flex-col items-start rounded-xl px-4 py-2 text-sm font-semibold ${listen ? 'bg-gray-100 text-gray-800' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}
+            className={`flex min-h-12 flex-col items-start justify-center rounded-xl px-5 py-2 font-semibold ${listen ? 'border border-[#24407e] bg-[#0c1730] text-slate-100' : 'bg-[#0b5cff] hover:bg-[#2a72ff]'}`}
           >
-            <span>{listen ? REC_LABEL[recStatus] : '🎙 강의 인식 시작'}</span>
+            <span className="flex items-center gap-2">
+              {!listen && <MicIcon />}
+              {listen ? REC_LABEL[recStatus] : '강의 인식 시작'}
+            </span>
             {/* 문장 내용(자막)은 보여 주지 않고, 서버에 저장된 문장 수만 표시해 제대로 듣고 있는지 확인 */}
             {(listen || feed.lineCount > 0) && (
               <span key={feed.lineCount} className="animate-[pulse_0.6s_ease-out_1] text-xs font-normal opacity-70">
@@ -139,28 +149,50 @@ function ProfRoom({ roomId }: { roomId: string }) {
         )}
         <button
           onClick={readTopQuestion}
-          className="rounded-xl bg-indigo-600 px-5 py-3 font-semibold text-white hover:bg-indigo-700"
+          className="flex min-h-12 items-center gap-2 rounded-xl border-2 border-[#2563eb] bg-[#0b1f4d] px-5 font-semibold hover:bg-[#10306f]"
         >
-          🔊 질문 읽어 주기
+          <SpeakerIcon /> 질문 읽어 주기
         </button>
         {!ended && (
-          <button onClick={endClass} className="rounded-xl px-4 py-3 text-sm text-gray-500 hover:bg-gray-100">
+          <button
+            onClick={endClass}
+            className="min-h-12 rounded-xl border-2 border-red-500/80 px-5 font-semibold text-red-400 hover:bg-red-500/10"
+          >
             수업 종료
           </button>
         )}
       </header>
 
       {(ended || notice) && (
-        <p className="bg-gray-800 px-6 py-2 text-center text-sm text-white">{notice || '종료된 수업입니다.'}</p>
+        <p className="bg-[#13254d] px-6 py-2 text-center text-sm text-slate-200">{notice || '종료된 수업입니다.'}</p>
       )}
 
-      <main className="grid flex-1 gap-6 p-6 lg:grid-cols-[1fr_26rem]">
-        <section>
-          <h2 className="mb-3 text-sm font-semibold text-gray-500">🙋 학생 질문 (많이 물어본 순)</h2>
-          <ClusterList clusters={clusters} />
+      <main className="grid flex-1 gap-6 p-6 lg:grid-cols-[1fr_28rem]">
+        <section className="flex flex-col rounded-2xl border border-[#1d3266] bg-[#0c1730]/80 p-6">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <h2 className="flex items-center gap-3 text-2xl font-bold">
+              학생 질문
+              <span className="rounded-full bg-[#13254d] px-3 py-0.5 text-lg">{clusters?.length ?? 0}</span>
+            </h2>
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as 'count' | 'recent')}
+              aria-label="정렬"
+              className="rounded-xl border border-[#24407e] bg-[#08122a] px-4 py-2 text-sm text-slate-200 focus:border-[#3b82f6] focus:outline-none"
+            >
+              <option value="count">많이 물어본 순</option>
+              <option value="recent">최근 순</option>
+            </select>
+          </div>
+          <ClusterList clusters={sorted} />
         </section>
-        <aside>
-          <h2 className="mb-3 text-sm font-semibold text-gray-500">📢 교수 질문</h2>
+        <aside className="rounded-2xl border border-[#1d3266] bg-[#0c1730]/80 p-6">
+          <h2 className="mb-5 flex items-center gap-3 text-2xl font-bold">
+            <span className="text-[#4c8dff]">
+              <EditIcon />
+            </span>
+            교수 질문
+          </h2>
           <ProfQuestionPanel roomId={roomId} questions={profQs} reload={reloadProfQs} disabled={ended} />
         </aside>
       </main>
@@ -169,25 +201,25 @@ function ProfRoom({ roomId }: { roomId: string }) {
       {!ended && (
         <div className="fixed right-3 bottom-3 text-xs">
           {demoOpen ? (
-            <div className="flex items-center gap-2 rounded-lg bg-white/90 p-2 shadow">
-              <span className="text-gray-500">
+            <div className="flex items-center gap-2 rounded-lg border border-[#24407e] bg-[#0c1730]/95 p-2 text-slate-200 shadow">
+              <span className="text-slate-400">
                 데모 대본 {feed.demo.index}/{feed.demoTotal}
               </span>
               {feed.demo.playing ? (
-                <button onClick={feed.stopDemo} className="rounded bg-gray-200 px-2 py-1">
+                <button onClick={feed.stopDemo} className="rounded bg-[#13254d] px-2 py-1">
                   정지
                 </button>
               ) : (
                 <>
-                  <button onClick={() => feed.playDemo(1)} className="rounded bg-gray-200 px-2 py-1">
+                  <button onClick={() => feed.playDemo(1)} className="rounded bg-[#13254d] px-2 py-1">
                     재생
                   </button>
-                  <button onClick={() => feed.playDemo(3)} className="rounded bg-gray-200 px-2 py-1">
+                  <button onClick={() => feed.playDemo(3)} className="rounded bg-[#13254d] px-2 py-1">
                     ×3
                   </button>
                 </>
               )}
-              <button onClick={() => setDemoOpen(false)} className="px-1 text-gray-400">
+              <button onClick={() => setDemoOpen(false)} className="px-1 text-slate-500">
                 ✕
               </button>
             </div>
@@ -210,7 +242,7 @@ function ProfRoom({ roomId }: { roomId: string }) {
 
       {showQr && (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/60" onClick={() => setShowQr(false)}>
-          <div className="flex flex-col items-center gap-4 rounded-3xl bg-white p-10">
+          <div className="flex flex-col items-center gap-4 rounded-3xl bg-white p-10 text-gray-900">
             <QRCodeSVG value={joinUrl} size={320} />
             <p className="font-mono text-6xl font-bold tracking-[0.3em]">{roomId}</p>
             <p className="text-gray-500">{joinUrl}</p>
@@ -218,5 +250,34 @@ function ProfRoom({ roomId }: { roomId: string }) {
         </div>
       )}
     </div>
+  );
+}
+
+const ICON = { width: 22, height: 22, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true } as const;
+
+function MicIcon() {
+  return (
+    <svg {...ICON}>
+      <rect x="9" y="2" width="6" height="12" rx="3" />
+      <path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4" />
+    </svg>
+  );
+}
+
+function SpeakerIcon() {
+  return (
+    <svg {...ICON}>
+      <path d="M11 5 6 9H2v6h4l5 4Z" />
+      <path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" />
+    </svg>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg {...ICON} width={28} height={28}>
+      <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.4 2.6a2.1 2.1 0 1 1 3 3L12 15l-4 1 1-4Z" />
+    </svg>
   );
 }
