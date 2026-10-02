@@ -160,8 +160,8 @@
 
 | ID | 요구사항 | 우선 |
 |---|---|---|
-| FR-B1 | 확정 문장이 질문 어미 규칙에 해당하면 5초간 이후 발화를 모아 서버에 판별을 요청한다 | P0 |
-| FR-B2 | AI가 실제 질문/수사적 질문을 판별하고, 실제 질문이면 문항·형식·선택지·예상 정답을 만든다 | P0 |
+| FR-B1 | 확정 문장이 질문 어미로 끝나면 그 문장을, 아니어도 `PROFQ_SCAN_LINES`문장이 모이거나 `PROFQ_SILENCE_MS` 동안 말이 멈추면 그 구간을 5초간 이후 발화와 함께 AI 판별에 보낸다 ("풀어 보세요" 같은 요청형 질문 포함) | P0 |
+| FR-B2 | AI가 문장별 발화 의도(설명 / 학생 응답 요청 / 이해도 확인 / 수사적 질문 / 수업 운영)를 분류하고, 응답 요청·이해도 확인이면 문항·형식·선택지·예상 정답을 만든다. 이해도 확인은 고정 선택지. 의도는 `prof_questions.speech_act`에 저장해 교수 알림에 표시 | P0 |
 | FR-B3 | 교수 화면에 "학생들에게 보낼까요?" 알림과 [보내기]·[무시]를 표시한다 (P-6) | P0 |
 | FR-B4 | 교수는 감지와 별도로 질문을 직접 입력해 보낼 수 있다 (P-7) | P1 |
 | FR-B5 | [보내기] 시 학생 화면 상단에 문항을 표시한다. 기본은 교수가 [마감]할 때까지 받고, 시간 제한(45초)을 걸면 남은 시간도 표시한다 (S-6) | P0 |
@@ -322,8 +322,11 @@ export interface Cluster {
 export type ProfQType = 'choice' | 'short' | 'open';
 export type ProfQStatus = 'pending' | 'open' | 'closed' | 'dismissed';
 
+export type SpeechAct = 'explanation' | 'response_request' | 'understanding_check' | 'rhetorical' | 'class_management';
+
 export interface ProfQuestion {
   id: number; room_id: string; spoken: string | null;
+  speech_act?: SpeechAct | null;          // AI 발화 의도 (직접 질문은 null)
   question: string; type: ProfQType; options: string[] | null;
   expected_answer: string | null; status: ProfQStatus;
   closes_at: string | null; summary: ProfQSummary | null;
@@ -615,6 +618,8 @@ export type ApiError = { error: { code: string; message: string } };
 | `CONTEXT_GRACE_SEC` | 5 | 질문 시각 이후 여유 (인식 지연 보정) |
 | `PROFQ_CONTEXT_SEC` | 120 | 교수 질문 판별용 맥락 범위 |
 | `PROFQ_WAIT_MS` | 5000 | 질문 후보 뒤 이후 발화 수집 시간 |
+| `PROFQ_SILENCE_MS` | 10000 | 이만큼 말이 멈추면 모인 문장을 AI 판별에 보냄 (요청 뒤 침묵) |
+| `PROFQ_SCAN_LINES` | 3 | 질문 어미가 없어도 이만큼 문장이 모이면 AI 판별 |
 | `PROFQ_DURATION_SEC` | 45 | 교수 질문 응답 시간 (D-4) |
 | `LOW_CONFIDENCE` | 0.6 | 이 값 미만이면 후보 표시 |
 | `LLM_TIMEOUT_MS` | 8000 | AI 제한 시간 |
@@ -641,7 +646,8 @@ export type ApiError = { error: { code: string; message: string } };
 | ID | 테스트 | 데이터 | 지표 |
 |---|---|---|---|
 | E1 | 강의 시점 매칭 | 가짜 강의 + 모호한 질문 30개, 정답 문장 번호 | 적중률 |
-| E2 | 교수 질문 감지 | 문장 40개 (실제 질문 15 / 수사적 질문 15 / 일반 문장 10) | 정밀도·재현율 |
+| E2 | 교수 질문 감지 | 문장 40개 (실제 질문 15 / 수사적 질문 15 / 일반 문장 10) | 정밀도·재현율, 발화 의도 분류 정확도 (`scripts/eval-speech-act.ts`) |
+| E2+ | 교수 질문 감지 전체 흐름 | 강의 대본 2개를 시간 순서대로 (요청형 질문·함정 문장 포함, `scripts/eval-detect.ts`) | 감지율, 헛알림 수 |
 | E3 | AI 거르기 | 무관·부적절 15개 + 경계 사례 15개 ("시험에 나와요?", "ㅁㄹ", "?") | 제외율 / 오제외율 |
 | E4 | 응답 속도 | 질문 입력 → 승인 화면 20회 | 평균·최대 |
 

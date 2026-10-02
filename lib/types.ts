@@ -42,10 +42,19 @@ export interface Cluster {
 export type ProfQType = 'choice' | 'short' | 'open';
 export type ProfQStatus = 'pending' | 'open' | 'closed' | 'dismissed';
 
+/**
+ * 교수 발화 의도 (Speech Act, P2). 학생에게 보내는 것은 response_request·understanding_check뿐
+ * explanation 설명 / response_request 학생 응답 요청 / understanding_check 이해도 확인 /
+ * rhetorical 수사적 질문 / class_management 수업 운영·안내
+ */
+export type SpeechAct = 'explanation' | 'response_request' | 'understanding_check' | 'rhetorical' | 'class_management';
+
 export interface ProfQuestion {
   id: number;
   room_id: string;
   spoken: string | null;
+  /** AI가 분류한 발화 의도. 직접 질문하기는 null */
+  speech_act?: SpeechAct | null;
   question: string;
   type: ProfQType;
   options: string[] | null;
@@ -148,6 +157,7 @@ export interface P1Result {
 export interface P2Input { lines: TranscriptLine[]; spoken: string; after: string }
 export interface P2Result {
   is_real_question: boolean;
+  speech_act: SpeechAct;
   question: string;
   type: ProfQType;
   options: string[] | null;

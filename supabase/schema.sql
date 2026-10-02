@@ -52,6 +52,7 @@ create table if not exists prof_questions (        -- 교수 질문
   id               bigserial primary key,
   room_id          text not null references rooms(id) on delete cascade,
   spoken           text,                           -- 원래 발화 (직접 입력이면 null)
+  speech_act       text check (speech_act in ('explanation','response_request','understanding_check','rhetorical','class_management')), -- AI 발화 의도 (직접 입력이면 null)
   question         text not null,
   type             text not null check (type in ('choice','short','open')),
   options          jsonb,
@@ -167,3 +168,7 @@ revoke execute on function recent_lines(text, int)                  from public,
 revoke execute on function join_cluster(text, bigint, text, int[])   from public, anon, authenticated;
 revoke execute on function join_cluster_by_id(bigint, text)          from public, anon, authenticated;
 revoke execute on function prof_q_answerable(bigint)                 from public, anon, authenticated;
+
+-- 이미 운영 중인 DB에 추가 (2026-10-03, 교수 발화 의도 Speech Act)
+alter table prof_questions add column if not exists speech_act text
+  check (speech_act in ('explanation','response_request','understanding_check','rhetorical','class_management'));

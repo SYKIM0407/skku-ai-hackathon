@@ -32,28 +32,42 @@ describe('validateP1', () => {
   });
 });
 
-describe('validateP2', () => {
+describe('validateP2 (Speech Act)', () => {
   const input = { lines, spoken: '고윳값이 몇 개일까요', after: '' };
+  const ask = { speech_act: 'response_request', source: '고윳값이 몇 개일까요' };
 
   it('choice 마지막 선택지 "모르겠어요" 보정 (중간에 있으면 맨 뒤로)', () => {
-    const r = validateP2({ is_real_question: true, question: 'q', type: 'choice', options: ['1개', '모르겠어요', '2개'], expected_answer: '2개', context_line_ids: [43, 7] }, input);
-    expect(r.options).toEqual(['1개', '2개', '모르겠어요']);
-    expect(r.context_line_ids).toEqual([43]);
+    const r = validateP2({ ...ask, question: 'q', type: 'choice', options: ['1개', '모르겠어요', '2개'], expected_answer: '2개', context_line_ids: [43, 7] }, input);
+    expect(r).toMatchObject({ is_real_question: true, speech_act: 'response_request', options: ['1개', '2개', '모르겠어요'], context_line_ids: [43] });
   });
 
   it('선택지가 모자라면 short, 이상한 type은 open, 비선택형은 options null', () => {
-    expect(validateP2({ is_real_question: true, type: 'choice', options: ['1개'] }, input).type).toBe('short');
-    const r = validateP2({ is_real_question: true, type: 'quiz', options: ['a', 'b'], question: '', expected_answer: 'null' }, input);
+    expect(validateP2({ ...ask, type: 'choice', options: ['1개'] }, input).type).toBe('short');
+    const r = validateP2({ ...ask, type: 'quiz', options: ['a', 'b'], question: '', expected_answer: 'null' }, input);
     expect(r).toMatchObject({ type: 'open', options: null, question: input.spoken, expected_answer: null });
   });
 
-  it('after_is_answer=true면 수사적 질문으로 강제', () => {
-    expect(validateP2({ after_is_answer: true, is_real_question: true, type: 'open' }, input).is_real_question).toBe(false);
-    expect(validateP2({ after_is_answer: false, is_real_question: true, type: 'open' }, input).is_real_question).toBe(true);
+  it('학생에게 보내는 건 response_request·understanding_check뿐, 이상한 의도는 explanation', () => {
+    for (const act of ['explanation', 'rhetorical', 'class_management', '???'])
+      expect(validateP2({ speech_act: act, source: input.spoken, is_real_question: true }, input).is_real_question).toBe(false);
+    expect(validateP2({ speech_act: '???', source: input.spoken }, input).speech_act).toBe('explanation');
   });
 
-  it('is_real_question은 true일 때만 true', () => {
-    expect(validateP2({ is_real_question: 'yes' }, input).is_real_question).toBe(false);
+  it('after_is_answer=true면 수사적 질문으로 강제', () => {
+    const r = validateP2({ ...ask, after_is_answer: true }, input);
+    expect(r).toMatchObject({ is_real_question: false, speech_act: 'rhetorical' });
+  });
+
+  it('이해도 확인은 고정 선택지 선택형, 정답 없음', () => {
+    const r = validateP2({ speech_act: 'understanding_check', source: '여기까지 이해됐나요', type: 'short', expected_answer: '네' }, { lines, spoken: '여기까지 이해됐나요', after: '' });
+    expect(r).toMatchObject({ is_real_question: true, type: 'choice', options: ['이해했어요', '조금 헷갈려요', '모르겠어요'], expected_answer: null });
+  });
+
+  it('근거 문장(source)이 보낸 구간에 없으면 질문 아님 (맥락에서 지어낸 질문 차단)', () => {
+    const seg = { lines, spoken: '람다가 2일 때 x를 찾으면 돼요. 30초 동안 계산해 보세요', after: '' };
+    expect(validateP2({ speech_act: 'response_request', source: '30초 동안 계산해 보세요!' }, seg).is_real_question).toBe(true);
+    expect(validateP2({ speech_act: 'response_request', source: '이 행렬은 고윳값이 몇 개일까요' }, seg).is_real_question).toBe(false);
+    expect(validateP2({ speech_act: 'response_request' }, seg).is_real_question).toBe(false);
   });
 });
 
