@@ -2,6 +2,7 @@ import 'server-only';
 import { askJSON } from './llm';
 import { formatLines } from './context';
 import { DONT_KNOW } from './config';
+import { normalizeAnswer } from './distribution';
 import type {
   DistributionItem, Misconception, P1Input, P1Result, P2Input, P2Result, P3Input, P3Result,
   ProfQType, QuestionCategory, TranscriptLine,
@@ -39,10 +40,12 @@ export const P1_SYSTEM = `너는 대학 강의의 질문 해석기다.
 반드시 JSON만 출력한다.`;
 
 export function p1User({ raw, lines, glossary }: P1Input): string {
+  const last = lines.at(-1);
   return `[용어집] ${glossary.length ? glossary.join(', ') : '(없음)'}
 
-[최근 강의 내용] (음수는 질문 시점 기준 몇 초 전)
+[최근 강의 내용] (위에서 아래로 시간순. "-N초"는 질문 시점보다 N초 전, N이 작을수록 최근)
 ${lines.length ? formatLines(lines) : '(없음)'}
+[가장 최근 문장] ${last ? `L${last.id}` : '(없음)'}
 
 [학생 질문] "${raw}"
 
@@ -53,13 +56,15 @@ ${lines.length ? formatLines(lines) : '(없음)'}
 - 판단이 애매하면 "관련". 정상 질문을 놓치는 것이 더 큰 문제다.
 
 매칭 규칙 (ref_line_ids):
-- "방금"은 가장 최근 1~2문장, "아까"는 그보다 이전을 우선한다.
+- 학생 질문에 강의 문장의 단어·기호·숫자(예: 식, 기호, 값)가 들어 있으면 그것이 나온 문장을 고른다. 여러 곳에 나오면 가장 최근 문장.
+- "방금", "?", "ㅁㄹ", "모르겠어요", "다시"처럼 가리키는 내용이 없으면 [가장 최근 문장]과 그 바로 앞 문장 중에서 고른다. 더 이전 문장을 고르지 않는다.
+- "아까"는 가장 최근 2문장보다 이전 문장을 우선한다.
 - "두 번째 거", "그 공식"처럼 순서나 종류를 가리키면 그에 맞게 찾는다.
-- "?", "ㅁㄹ", "모르겠어요"만 있으면 가장 최근 설명을 이해하지 못한 것으로 본다.
 - 강의와 연결되지 않는 일반 질문이면 빈 배열.
 
 다듬기 규칙 (refined):
 - 교수에게 보낼 정중한 질문 한 문장으로 쓴다.
+- 반드시 고른 문장(ref_line_ids)의 내용으로 쓴다. 고르지 않은 문장의 내용을 섞지 않는다.
 - 강의 인식 결과의 오타는 용어집을 참고해 바로잡는다.
 - 학생의 말투나 개인 정보가 드러나지 않게 한다.
 - 강의에 없는 내용을 지어내지 않는다.
@@ -69,13 +74,13 @@ ${lines.length ? formatLines(lines) : '(없음)'}
   candidates에 서로 다른 해석의 다듬은 질문 문장을 2~3개 넣는다.
 - category가 "관련"이 아니면 ref_line_ids, refined, candidates는 비운다.
 
-출력 형식:
+출력 형식 (JSON 하나만. <>는 설명이므로 실제 값으로 바꾼다):
 {
-  "category": "관련",
-  "ref_line_ids": [43, 44],
-  "refined": "방금 행렬식을 0으로 놓으신 이유를 다시 설명해 주실 수 있나요?",
-  "confidence": 0.85,
-  "candidates": []
+  "category": "<관련 | 무관 | 부적절>",
+  "ref_line_ids": [<고른 문장 번호(숫자)>],
+  "refined": "<교수에게 보낼 질문 한 문장>",
+  "confidence": <0~1 숫자>,
+  "candidates": [<확신이 낮을 때만 다른 해석의 질문 문장 2~3개>]
 }`;
 }
 
@@ -113,9 +118,11 @@ ${lines.length ? formatLines(lines) : '(없음)'}
 [질문 후보] "${spoken}"
 [이후 5초간 발화] "${after}"
 
-1) 학생들의 응답을 기다리는 실제 질문인지 판별하라.
-   - 직후에 교수가 스스로 답하면 수사적 질문이다 → false
-   - "생각해 보세요", "누가 대답해 볼까요", 또는 이후 발화가 없으면 → true
+1) 학생들의 응답을 기다리는 실제 질문인지 판별하라. 아래 순서대로 확인한다.
+   a. [이후 5초간 발화]가 질문 후보에 대한 답이나 설명이면 (예: "그건 바로 …", "… 때문이에요", "…입니다", "… 하면 돼요")
+      교수가 스스로 답한 수사적 질문이다 → false
+   b. 수업 진행 안내(예: "쉬었다 할까요", "시작해 볼까요", "들리시죠")나 질문이 아닌 문장 → false
+   c. "생각해 보세요", "누가 대답해 볼까요", "답을 보내 주세요"처럼 응답을 기다리거나, 이후 발화가 없으면 → true
 2) true라면 학생 화면에 표시할 문항으로 정리하라. 강의 맥락을 반영해 문항만 읽어도 이해되게 쓴다.
 3) 답변 형식을 골라라.
    - choice: 답이 몇 개로 나뉠 때. 선택지 3~4개, 마지막은 반드시 "${DONT_KNOW}"
@@ -123,14 +130,15 @@ ${lines.length ? formatLines(lines) : '(없음)'}
    - open: 의견이나 설명
 4) 정답이 분명하면 expected_answer에 적고, 아니면 null.
 
-출력 형식:
+출력 형식 (JSON 하나만. <>는 설명이므로 실제 값으로 바꾼다):
 {
-  "is_real_question": true,
-  "question": "방금 예제의 2×2 행렬은 고윳값이 몇 개일까요?",
-  "type": "choice",
-  "options": ["1개", "2개", "3개", "${DONT_KNOW}"],
-  "expected_answer": "2개",
-  "context_line_ids": [52, 53]
+  "reason": "<1)의 판단 근거 한 문장>",
+  "is_real_question": <true | false>,
+  "question": "<학생 화면에 표시할 문항>",
+  "type": "<choice | short | open>",
+  "options": [<choice일 때 선택지, 마지막은 "${DONT_KNOW}">],
+  "expected_answer": <"정답" 또는 null>,
+  "context_line_ids": [<관련 강의 문장 번호(숫자)>]
 }`;
 }
 
@@ -190,49 +198,73 @@ ${context_lines.length ? formatLines(context_lines) : '(없음)'}
 [학생 응답 ${answers.length}개]
 ${shown.join('\n') || '(없음)'}${more}
 
-1) 오답에 공통으로 나타나는 오해를 최대 2개 찾아라. 없으면 빈 배열.
-2) 각 오해와 관련된 강의 문장 번호를 적어라.
+1) 오답에 공통으로 나타나는 오해를 최대 2개 찾아라. 실제로 그 오답을 낸 응답이 있을 때만 쓴다. 없으면 빈 배열.
+2) 각 오해에 해당하는 응답(답변 분포의 항목 이름 그대로)과 관련된 강의 문장 번호를 적어라.
 3) 교수가 다시 설명하면 좋을 내용을 한 문장으로 써라.
-4) 교실에서 읽을 15초 이내의 요약문을 써라. 학생을 탓하지 않는 정중한 문체로 쓴다.
+4) 교실에서 읽을 짧은 요약문을 한두 문장으로 써라. 학생을 탓하지 않는 정중한 문체로 쓴다.
+   숫자·비율(%)은 쓰지 않는다. 응답 비율 문장은 코드가 [답변 분포]로 따로 만든다.
 5) 수업과 무관한 응답은 분석에서 제외한다.
 
-출력 형식:
+출력 형식 (JSON 하나만. <>는 설명이므로 실제 값으로 바꾼다):
 {
   "misconceptions": [
-    { "text": "행렬 크기(3×3)와 고윳값 개수를 같다고 생각함", "ratio": 0.2, "line_ids": [52] }
+    { "text": "<학생들이 무엇을 오해했는지 한 문장>", "answers": [<이 오해에 해당하는 응답 항목 이름>], "line_ids": [<관련 강의 문장 번호(숫자)>] }
   ],
-  "suggestion": "고윳값 개수는 특성방정식의 해의 개수라는 점을 다시 설명해 주세요",
-  "spoken_summary": "69%가 2개라고 답했습니다. 20%는 행렬 크기와 고윳값 개수를 혼동했습니다."
+  "suggestion": "<다시 설명하면 좋을 내용 한 문장, 없으면 null>",
+  "spoken_summary": "<숫자 없이 오해를 짚는 요약 한두 문장>"
 }`;
 }
 
-/** AI 없이 만드는 요약문 (PROMPTS.md P3 "실패 시") */
-export function fallbackSpokenSummary(distribution: DistributionItem[]): string {
+/** 교실에서 읽을 응답 비율 문장. 정답이 있으면 정답 비율, 없으면 가장 많은 응답 */
+export function fallbackSpokenSummary(distribution: DistributionItem[], expected?: string | null): string {
+  if (!distribution.some((d) => d.count > 0)) return '아직 응답이 없습니다';
+  const exp = expected ? distribution.find((d) => normalizeAnswer(d.label) === normalizeAnswer(expected)) : undefined;
+  if (exp) return `정답(${exp.label})을 고른 학생은 ${pct(exp.ratio)}입니다`;
   const top = [...distribution].sort((a, b) => b.count - a.count)[0];
-  if (!top || top.count === 0) return '아직 응답이 없습니다';
-  return `가장 많은 응답은 ${top.label}이며 ${pct(top.ratio)}입니다`;
+  return `가장 많이 고른 답은 ${top.label}, ${pct(top.ratio)}입니다`;
 }
 
 /** P3 실패 시 대체 결과. /api/prof-q/close에서 analyzeAnswers가 null이면 이걸 쓴다 */
-export function fallbackSummary(distribution: DistributionItem[]): P3Result {
-  return { misconceptions: [], suggestion: null, spoken_summary: fallbackSpokenSummary(distribution) };
+export function fallbackSummary(distribution: DistributionItem[], expected?: string | null): P3Result {
+  return { misconceptions: [], suggestion: null, spoken_summary: fallbackSpokenSummary(distribution, expected) };
 }
+
+/** AI 요약에서 숫자·비율이 든 문장을 뺀다 (예시를 베끼거나 비율을 지어내는 것 방지) */
+const dropNumberSentences = (text: string): string =>
+  (text.match(/[^.!?。]+[.!?。]?/g) ?? [])
+    .map((x) => x.trim())
+    .filter((x) => x && !/\d\s*(%|퍼센트|명)|\d+\s*분의/.test(x))
+    .join(' ');
 
 /** P3 출력 검증. 테스트를 위해 export */
 export function validateP3(r: Record<string, unknown>, input: P3Input): P3Result {
+  const byKey = new Map(input.distribution.map((d) => [normalizeAnswer(d.label), d]));
   const misconceptions: Misconception[] = (Array.isArray(r.misconceptions) ? r.misconceptions : [])
     .map((m: unknown) => {
       const o = (m ?? {}) as Record<string, unknown>;
-      let ratio = Number(o.ratio);
-      if (ratio > 1 && ratio <= 100) ratio /= 100; // "20"처럼 퍼센트로 오는 경우
+      // 비율은 AI가 짚은 응답 항목으로 코드가 계산한다 (AI가 비율을 지어내지 않게)
+      const matched = [...new Set(strList(o.answers, 10).map(normalizeAnswer))]
+        .map((k) => byKey.get(k))
+        .filter((d): d is DistributionItem => !!d);
+      let ratio: number;
+      if (matched.length) ratio = Math.round(matched.reduce((sum, d) => sum + d.ratio, 0) * 100) / 100;
+      else {
+        ratio = Number(o.ratio);
+        if (ratio > 1 && ratio <= 100) ratio /= 100; // "20"처럼 퍼센트로 오는 경우
+      }
       return { text: str(o.text), ratio: clamp01(ratio), line_ids: validIds(o.line_ids, input.context_lines) };
     })
     .filter((m) => m.text)
     .slice(0, 2);
+
+  // 비율 문장은 코드로, AI 문장은 숫자 든 문장을 빼고 뒤에 붙인다
+  const head = fallbackSpokenSummary(input.distribution, input.expected_answer);
+  const tail = dropNumberSentences(str(r.spoken_summary));
+  const suggestion = str(r.suggestion);
   return {
     misconceptions,
-    suggestion: str(r.suggestion) || null,
-    spoken_summary: str(r.spoken_summary) || fallbackSpokenSummary(input.distribution),
+    suggestion: suggestion && suggestion.toLowerCase() !== 'null' ? suggestion : null,
+    spoken_summary: tail ? `${head}. ${tail}` : head,
   };
 }
 
