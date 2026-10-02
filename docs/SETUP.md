@@ -62,7 +62,7 @@ npm run build
 
 1. [vercel.com](https://vercel.com) → Add New Project → GitHub 저장소 import
 2. Environment Variables에 `.env.local` 값 입력
-3. Deploy → **폰으로 배포 URL 접속 확인** (HTTPS여야 마이크 권한이 동작)
+3. Deploy → **브라우저로 배포 URL 접속 확인** (HTTPS여야 마이크 권한이 동작)
 4. PR마다 미리보기 URL이 자동 생성돼요
 
 ## 5. 브랜치 보호 (팀장)
@@ -102,7 +102,7 @@ lib/mock.ts 목 데이터로 /prof/[room] 화면을 SPEC §9.3대로 만들어 �
 
 **S · 학생 화면**
 ```
-T-21 해줘. /s/[room] 모바일 화면을 SPEC §9.2대로, 익명 ID는 FR-R4대로.
+T-21 해줘. /s/[room] 학생 화면을 SPEC §9.2대로, 익명 ID는 FR-R4대로.
 아직 API가 없으니 lib/mock.ts로 동작하게 해 줘.
 ```
 
@@ -131,7 +131,7 @@ T-04 먼저 해줘. TASKS.md §1의 함수 계약대로 lib/context.ts, llm.ts, 
 
 | 증상 | 해결 |
 |---|---|
-| 마이크 권한이 안 뜸 | `localhost` 또는 HTTPS에서만 동작. 폰·다른 PC는 Vercel URL로 |
+| 마이크 권한이 안 뜸 | `localhost` 또는 HTTPS에서만 동작. 다른 PC는 Vercel URL로 |
 | 받아쓰기가 아무것도 안 함 | 크롬인지 확인 (사파리·파이어폭스 미지원). 가짜 강의 모드로 우회 |
 | Realtime 이벤트가 안 옴 | schema.sql 마지막 `alter publication` 실행 여부 확인, `NEXT_PUBLIC_USE_REALTIME=false`로 폴링 |
 | 학생이 questions를 못 읽음 | 의도된 설계 (RLS로 원문 보호). 내 질문은 localStorage, 인원은 clusters 조회 |
