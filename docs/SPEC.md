@@ -645,7 +645,7 @@ export type ApiError = { error: { code: string; message: string } };
 | E3 | AI 거르기 | 무관·부적절 15개 + 경계 사례 15개 ("시험에 나와요?", "ㅁㄹ", "?") | 제외율 / 오제외율 |
 | E4 | 응답 속도 | 질문 입력 → 승인 화면 20회 | 평균·최대 |
 
-`npm run eval`(`scripts/try-prompts.ts`)로 E1~E3을 확인한다. 정식 평가 스크립트(T-46)는 이번 범위에서 제외.
+`npm run eval`(`scripts/try-prompts.ts`)로 E1~E3을 확인하고 결과를 `docs/EVAL_RESULTS.md`에 기록한다.
 
 ---
 
