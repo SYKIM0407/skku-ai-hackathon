@@ -99,3 +99,51 @@ grant select on answer_counts to anon, authenticated;
 
 alter publication supabase_realtime add table clusters;
 alter publication supabase_realtime add table prof_questions;
+
+-- ───────────── 서버 전용 함수 (API route에서 service role로 rpc 호출) ─────────────
+-- 시간 비교는 DB now() 기준으로만 한다 (클라이언트·서버 시계 차이 방지)
+
+-- 최근 강의 인식 문장 + 몇 초 전인지 (lib/context.ts recentLines)
+create or replace function recent_lines(p_room text, p_sec int)
+returns table(id bigint, text text, ago_sec int)
+language sql stable as $$
+  select t.id, t.text, extract(epoch from now() - t.created_at)::int
+  from transcripts t
+  where t.room_id = p_room and t.created_at >= now() - make_interval(secs => p_sec)
+  order by t.id
+$$;
+
+-- 질문을 묶음에 합류시키고 인원을 올린다 (lib/cluster.ts). 동시 [보내기]에도 count가 꼬이지 않게 방 단위로 잠근다
+create or replace function join_cluster(p_room text, p_qid bigint, p_title text, p_refs int[])
+returns table(cluster_id bigint, cnt int)
+language plpgsql as $$
+declare cid bigint;
+begin
+  perform pg_advisory_xact_lock(hashtext(p_room));
+  if coalesce(array_length(p_refs, 1), 0) > 0 then
+    select c.id into cid from clusters c
+     where c.room_id = p_room and c.ref_line_ids && p_refs   -- 강의 문장이 겹치면 합류
+     order by c.count desc limit 1;
+  end if;
+  if cid is null then
+    insert into clusters(room_id, title, ref_line_ids) values (p_room, p_title, p_refs) returning id into cid;
+  end if;
+  update clusters set count = count + 1, updated_at = now() where id = cid;
+  update questions set status = 'sent', cluster_id = cid where id = p_qid;
+  return query select c.id, c.count from clusters c where c.id = cid;
+end $$;
+
+-- 교수 질문에 지금 응답할 수 있는지 (/api/answer의 410 판정). 교수 탭이 닫혀 자동 마감이 안 돼도 시간이 지나면 false
+create or replace function prof_q_answerable(p_id bigint)
+returns boolean
+language sql stable as $$
+  select exists (
+    select 1 from prof_questions
+    where id = p_id and status = 'open' and (closes_at is null or closes_at > now())
+  )
+$$;
+
+-- 위 함수들은 anon이 rpc로 부르면 안 된다 (강의 원문 노출·쓰기 우회 방지)
+revoke execute on function recent_lines(text, int)                  from public, anon, authenticated;
+revoke execute on function join_cluster(text, bigint, text, int[])   from public, anon, authenticated;
+revoke execute on function prof_q_answerable(bigint)                 from public, anon, authenticated;
