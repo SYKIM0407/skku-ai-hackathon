@@ -3,45 +3,43 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { postJSON } from '@/lib/api-client';
 import { CONFIG } from '@/lib/config';
 import type { DetectRes, TranscriptRes } from '@/lib/types';
+import { createDetectPlanner } from './detectPlanner';
 
 /**
- * 교수 질문 후보 1차 감지 (FR-B1): 질문 어미로 끝나는 문장.
- * 넉넉하게 잡고, 수사적 질문·일반 문장은 서버의 P2가 거른다.
- */
-const QUESTION_END = /(까요|나요|습니까|ㅂ니까|인가요|일까|을까|ㄹ까|뭘까|뭐죠|뭐예요|어때요|어떨까|있죠|맞죠|알겠죠|\?|？)\s*[?？]?\s*$/;
-
-/**
- * 강의 문장 처리: 서버 저장 + 교수 질문 후보면 PROFQ_WAIT_MS 동안 이후 발화를 모아 detect 요청.
+ * 강의 문장 처리: 서버 저장 + 교수 질문 감지 요청.
+ * 언제 무엇을 AI(P2, Speech Act 분류)에게 보낼지는 detectPlanner가 정한다 (평가 스크립트와 같은 로직).
  */
 export function useLectureFeed(roomId: string, onDetected: () => void) {
-  const buffer = useRef<{ spoken: string; after: string[] } | null>(null);
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const planner = useRef(
+    createDetectPlanner({ scanLines: CONFIG.PROFQ_SCAN_LINES, waitMs: CONFIG.PROFQ_WAIT_MS, silenceMs: CONFIG.PROFQ_SILENCE_MS }),
+  );
   const [lineCount, setLineCount] = useState(0);
-
-  const flush = useCallback(async () => {
-    const b = buffer.current;
-    buffer.current = null;
-    if (!b) return;
-    const res = await postJSON<DetectRes>('/api/prof-q/detect', { roomId, spoken: b.spoken, after: b.after.join(' ') });
-    if (res.ok && res.data.detected) onDetected();
-  }, [roomId, onDetected]);
+  const detected = useRef(onDetected);
+  useEffect(() => {
+    detected.current = onDetected;
+  });
 
   const handleFinal = useCallback(
     (text: string) => {
       void postJSON<TranscriptRes>('/api/transcript', { roomId, text }).then((r) => r.ok && setLineCount((n) => n + 1));
-      if (buffer.current) {
-        buffer.current.after.push(text);
-        return;
-      }
-      if (QUESTION_END.test(text)) {
-        buffer.current = { spoken: text, after: [] };
-        timers.current.push(setTimeout(flush, CONFIG.PROFQ_WAIT_MS));
-      }
+      planner.current.push(text, Date.now());
     },
-    [roomId, flush],
+    [roomId],
   );
 
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  // 0.5초마다 시간을 흘려 보낼 감지 요청이 있으면 보낸다
+  useEffect(() => {
+    const t = setInterval(() => {
+      for (const req of planner.current.tick(Date.now())) {
+        void postJSON<DetectRes>('/api/prof-q/detect', { roomId, spoken: req.spoken, after: req.after }).then((res) => {
+          const hit = res.ok && res.data.detected;
+          planner.current.result(hit, Date.now());
+          if (hit) detected.current();
+        });
+      }
+    }, 500);
+    return () => clearInterval(t);
+  }, [roomId]);
 
   return { handleFinal, lineCount };
 }

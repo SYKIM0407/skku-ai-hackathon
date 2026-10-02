@@ -5,6 +5,7 @@ import { postJSON } from '@/lib/api-client';
 import { CONFIG, DONT_KNOW } from '@/lib/config';
 import { useLive } from '@/lib/live';
 import { speak } from '@/lib/speech';
+import { SPEECH_ACT_LABEL } from '@/lib/speechAct';
 import { sb } from '@/lib/supabase/client';
 import type { CloseRes, OkRes, OpenRes, ProfQType, ProfQuestion } from '@/lib/types';
 
@@ -108,6 +109,12 @@ function DetectedAlert({ q, reload }: { q: ProfQuestion; reload: () => void }) {
   return (
     <section className="rounded-2xl border-2 border-amber-400/70 bg-amber-400/10 p-5">
       <p className="text-sm font-semibold text-amber-300">🔔 질문이 감지되었습니다. 학생들에게 보낼까요?</p>
+      {q.speech_act && (
+        <p className="mt-2 text-xs text-amber-200/80">
+          AI 발화 의도 분석: <span className="rounded bg-amber-300/20 px-1.5 py-0.5 font-semibold">{SPEECH_ACT_LABEL[q.speech_act]}</span>
+          {q.spoken && <span className="ml-1">· &ldquo;{q.spoken.length > 40 ? `${q.spoken.slice(0, 40)}…` : q.spoken}&rdquo;</span>}
+        </p>
+      )}
       <p className="mt-2 text-xl font-semibold text-white">{q.question}</p>
       <div className="mt-1">
         <Options q={q} />

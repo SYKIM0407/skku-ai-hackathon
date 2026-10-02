@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "eval": "tsx --conditions=react-server scripts/try-prompts.ts"
+    "eval": "tsx --conditions=react-server scripts/try-prompts.ts",
+    "eval:detect": "tsx --conditions=react-server scripts/eval-detect.ts",
+    "eval:speech-act": "tsx --conditions=react-server scripts/eval-speech-act.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

@@ -5,8 +5,9 @@ import { CONFIG, DONT_KNOW } from './config';
 import { normalizeAnswer } from './distribution';
 import type {
   DistributionItem, Misconception, P1Input, P1Result, P2Input, P2Result, P3Input, P3Result,
-  ProfQType, QuestionCategory, TranscriptLine,
+  ProfQType, QuestionCategory, SpeechAct, TranscriptLine,
 } from './types';
+import { ASKS_STUDENTS, SPEECH_ACTS, UNDERSTANDING_OPTIONS } from './speechAct';
 
 // 프롬프트 원문은 docs/PROMPTS.md. 여기를 고치면 문서도 같이 고친다.
 // 모든 함수는 AI 실패 시 null을 돌려주고, 호출부(app/api/**)가 대체 동작을 맡는다.
@@ -115,34 +116,44 @@ export function p2User({ lines, spoken, after }: P2Input): string {
   return `[최근 강의 내용]
 ${lines.length ? formatLines(lines) : '(없음)'}
 
-[질문 후보] "${spoken}"
+[질문 후보 구간] "${spoken}"
 [이후 5초간 발화] "${after}"
 
-1) 먼저 [이후 5초간 발화]가 [질문 후보]에 대한 답이나 설명인지 판단해 after_is_answer에 적어라.
-   - 예: 질문 후보 "왜 먼저 미분을 할까요" + 이후 발화 "그래야 기울기를 구할 수 있기 때문이에요" → true (교수가 스스로 답함)
-   - 예: 이후 발화가 응답을 기다리는 말(생각해 보라, 대답해 보라 등)이거나 이후 발화 없음 → false
-2) 학생들의 응답을 기다리는 실제 질문인지 판별해 is_real_question에 적어라.
-   - after_is_answer가 true면 수사적 질문이므로 반드시 false
-   - 수업 진행 안내(예: "정리하고 넘어갈까요", "마이크 소리 괜찮나요")나 질문이 아닌 문장 → false
-   - 그 밖에 학생에게 묻는 질문이면 → true
-3) true라면 학생 화면에 표시할 문항으로 정리하라. 강의 맥락을 반영해 문항만 읽어도 이해되게 쓴다.
-   "생각해 보세요", "자 그럼" 같은 진행 멘트는 문항에 넣지 않는다.
-4) 답변 형식을 골라라.
-   - choice: "몇 개", "어느 것", "예/아니요"처럼 답이 몇 개로 나뉠 때. 선택지 3~4개, 마지막은 반드시 "${DONT_KNOW}"
+[질문 후보 구간]은 방금 교수가 말한 한 문장 또는 연속된 몇 문장이다.
+너의 일은 질문을 새로 만드는 것이 아니라, 교수가 "실제로 말한" 각 문장의 발화 의도(Speech Act)를 분류하는 것이다.
+
+1) [질문 후보 구간]을 문장 단위로 나눠 각 문장의 발화 의도를 sentences에 적어라.
+   - "response_request" 학생 응답 요청: 학생에게 답·행동을 요구 (의문문 "~일까요?"와 "~구해 보세요", "손 들어 보세요", "채팅으로 보내 주세요", "의견을 적어 주세요" 모두)
+   - "understanding_check" 이해도 확인: 학생이 이해했는지 묻는 말 (예: "여기까지 이해됐나요", "따라오고 있죠?")
+   - "rhetorical" 수사적 질문: 교수가 묻고 바로 스스로 답하거나 그대로 다음 설명으로 넘어가는 질문
+   - "explanation" 설명: 개념·풀이·예시를 말하는 평서문 (예: "~하면 돼요", "~가 나와요", "~라고 해요", "~볼게요")
+   - "class_management" 수업 운영: 수업 내용이 아니라 진행·안내에 관한 말. "~할까요"로 끝나도 수업 진행 제안이면 여기에 넣는다
+     (예: "적어 두세요", "다음 페이지 보세요", "필기 안 하셔도 돼요", "자료는 올려 둘게요", "이건 시험에 나와요", "다들 들리시죠", "정리하고 넘어갈까요", "잠깐 쉬었다가 할까요")
+2) [이후 5초간 발화]가 구간의 질문에 대한 교수 자신의 답·설명(질문의 내용을 교수가 직접 말함)이면 after_is_answer를 true로 적어라. 그 질문은 rhetorical이다.
+   이후 발화가 응답을 기다리는 말(생각해 보라, 대답해 보라 등), 학생 반응에 대한 교수의 리액션(예: "좋아요", "많이 드셨네요", "대부분 이해했네요"), 또는 없음이면 false.
+3) speech_act에는 구간에서 학생에게 가장 직접 말을 거는 문장의 의도를 적고, 그 문장을 source에 글자 그대로 옮긴다.
+   response_request나 understanding_check 문장이 없으면 대표 문장의 의도를 적는다.
+   설명 문장을 질문으로 바꾸지 않는다. [최근 강의 내용]에 있던 이전 질문을 다시 쓰지 않는다.
+4) speech_act가 response_request 또는 understanding_check이면 학생 화면에 표시할 문항을 question에 쓴다.
+   강의 맥락을 반영해 문항만 읽어도 이해되게 쓰되, "생각해 보세요", "자 그럼" 같은 진행 멘트는 넣지 않는다.
+5) 답변 형식을 골라라.
+   - choice: "몇 개", "어느 것", "예/아니요", "손 들어 보세요"처럼 답이 몇 개로 나뉠 때. 선택지 3~4개, 마지막은 반드시 "${DONT_KNOW}"
    - short: 선택지로 나누기 어려운 짧은 단어나 숫자
    - open: 의견이나 설명
-5) 정답이 분명하면 expected_answer에 적고, 아니면 null.
+6) 정답이 분명하면 expected_answer에 적고, 아니면 null.
 
 출력 형식 (JSON 하나만. <>는 설명이므로 실제 값으로 바꾼다):
 {
+  "sentences": [ { "text": "<구간의 문장>", "act": "<explanation | response_request | understanding_check | rhetorical | class_management>" } ],
   "after_is_answer": <true | false>,
-  "is_real_question": <true | false>,
-  "question": "<학생 화면에 표시할 문항>",
+  "speech_act": "<위 다섯 가지 중 하나>",
+  "source": "<speech_act에 해당하는 문장 그대로>",
+  "question": "<학생 화면에 표시할 문항, 보낼 질문이 아니면 빈 문자열>",
   "type": "<choice | short | open>",
   "options": [<choice일 때 선택지, 마지막은 "${DONT_KNOW}">],
   "expected_answer": <"정답" 또는 null>,
   "context_line_ids": [<관련 강의 문장 번호(숫자)>]
-}}`;
+}`;
 }
 
 const PROFQ_TYPES: ProfQType[] = ['choice', 'short', 'open'];
@@ -151,11 +162,22 @@ const PROFQ_TYPES: ProfQType[] = ['choice', 'short', 'open'];
 export function validateP2(r: Record<string, unknown>, input: P2Input): P2Result {
   // 교수가 바로 스스로 답했다고 AI가 판단했으면 수사적 질문 (AI 판정끼리의 모순 정리)
   const selfAnswered = r.after_is_answer === true || r.after_is_answer === 'true';
-  const is_real_question = !selfAnswered && (r.is_real_question === true || r.is_real_question === 'true');
+  // 발화 의도가 이상하면 설명으로 본다 (학생에게 보내지 않는 쪽이 안전)
+  let speech_act: SpeechAct = SPEECH_ACTS.includes(r.speech_act as SpeechAct) ? (r.speech_act as SpeechAct) : 'explanation';
+  if (selfAnswered && ASKS_STUDENTS.includes(speech_act)) speech_act = 'rhetorical';
+  // 근거 문장이 실제로 보낸 구간에 있어야 한다. 없으면 AI가 맥락에서 질문을 지어낸 것으로 보고 버린다
+  const squash = (t: string) => t.replace(/[s.,!?？~'"“”‘’]/g, '');
+  const source = squash(str(r.source));
+  const grounded = source.length >= 2 && squash(input.spoken).includes(source);
+  const is_real_question = ASKS_STUDENTS.includes(speech_act) && grounded;
   let type: ProfQType = PROFQ_TYPES.includes(r.type as ProfQType) ? (r.type as ProfQType) : 'open';
   let options: string[] | null = null;
 
-  if (type === 'choice') {
+  if (speech_act === 'understanding_check') {
+    // 이해도 확인은 항상 같은 선택형으로 (교수가 바로 비율을 볼 수 있게)
+    type = 'choice';
+    options = [...UNDERSTANDING_OPTIONS];
+  } else if (type === 'choice') {
     // "모르겠어요"는 항상 마지막 하나만 (FR-B6)
     const opts = strList(r.options, 6).filter((o) => o !== DONT_KNOW);
     if (opts.length >= 2) options = [...opts, DONT_KNOW];
@@ -165,10 +187,11 @@ export function validateP2(r: Record<string, unknown>, input: P2Input): P2Result
   const expected = str(r.expected_answer);
   return {
     is_real_question,
+    speech_act,
     question: str(r.question) || input.spoken,
     type,
     options,
-    expected_answer: expected && expected.toLowerCase() !== 'null' ? expected : null,
+    expected_answer: speech_act === 'understanding_check' ? null : expected && expected.toLowerCase() !== 'null' ? expected : null,
     context_line_ids: validIds(r.context_line_ids, input.lines),
   };
 }

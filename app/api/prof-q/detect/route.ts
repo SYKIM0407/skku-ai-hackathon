@@ -30,6 +30,7 @@ export async function POST(req: Request) {
     .insert({
       room_id: r.room.id,
       spoken,
+      speech_act: ai.speech_act,
       question: ai.question,
       type: ai.type,
       options: ai.options,

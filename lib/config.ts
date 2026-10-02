@@ -9,6 +9,10 @@ export const CONFIG = {
   PROFQ_CONTEXT_SEC: 120,
   /** 질문 후보 뒤 이후 발화 수집 시간 */
   PROFQ_WAIT_MS: 5000,
+  /** 교수가 이만큼 말을 멈추면 모인 문장을 AI에게 보낸다 (요청 뒤 침묵). 보통 문장 간격보다 길게 */
+  PROFQ_SILENCE_MS: 10000,
+  /** 질문 어미가 없어도 이만큼 문장이 모이면 AI가 교수 질문인지 판단한다 */
+  PROFQ_SCAN_LINES: 3,
   /** 교수 질문 응답 시간 (D-4) */
   PROFQ_DURATION_SEC: 45,
   /** 이 값 미만이면 다듬은 질문 후보 표시 */

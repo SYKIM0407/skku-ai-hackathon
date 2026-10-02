@@ -57,7 +57,7 @@ function ProfRoom({ roomId }: { roomId: string }) {
       ((
         await sb()
           .from('prof_questions')
-          .select('id, room_id, spoken, question, type, options, expected_answer, status, closes_at, summary')
+          .select('id, room_id, spoken, speech_act, question, type, options, expected_answer, status, closes_at, summary')
           .eq('room_id', roomId)
           .neq('status', 'dismissed') // [삭제]한 질문은 목록에서 뺀다
           .order('id', { ascending: false })
