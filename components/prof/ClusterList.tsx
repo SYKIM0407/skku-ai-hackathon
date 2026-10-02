@@ -1,8 +1,22 @@
 'use client';
-import type { Cluster } from '@/lib/types';
+import { useState } from 'react';
+import { postJSON } from '@/lib/api-client';
+import type { Cluster, OkRes } from '@/lib/types';
 
-/** 질문 묶음 목록 (FR-P1). 정렬은 화면에서 정해 넘긴다. 학생 원문은 없고 대표 질문만 보인다 */
-export function ClusterList({ clusters }: { clusters: Cluster[] | undefined }) {
+/** 질문 묶음 목록 (FR-P1) + 확인 후 [삭제] (FR-P4). 정렬은 화면에서 정해 넘긴다. 학생 원문은 없고 대표 질문만 보인다 */
+export function ClusterList({ clusters, onChange }: { clusters: Cluster[] | undefined; onChange?: () => void }) {
+  const [busyId, setBusyId] = useState<number | null>(null);
+
+  async function remove(c: Cluster) {
+    const who = c.count > 1 ? `${c.count}명이 물어본 질문` : '이 질문';
+    if (!window.confirm(`${who}을 삭제할까요?\n"${c.title}"\n\n삭제하면 목록에서 사라지고 되돌릴 수 없습니다.`)) return;
+    setBusyId(c.id);
+    const res = await postJSON<OkRes>('/api/cluster/delete', { clusterId: c.id });
+    setBusyId(null);
+    if (!res.ok) window.alert(res.message);
+    onChange?.();
+  }
+
   if (!clusters) return <p className="py-10 text-center text-slate-500">불러오는 중…</p>;
   if (!clusters.length)
     return (
@@ -35,6 +49,15 @@ export function ClusterList({ clusters }: { clusters: Cluster[] | undefined }) {
           </span>
           <p className="flex-1 text-lg leading-snug">{c.title}</p>
           {c.read_aloud && <span className="shrink-0 rounded-full bg-[#13254d] px-2 py-0.5 text-xs text-slate-400">읽음</span>}
+          <button
+            disabled={busyId === c.id}
+            onClick={() => remove(c)}
+            aria-label="질문 삭제"
+            title="삭제"
+            className="shrink-0 rounded-lg px-2 py-1 text-slate-500 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
+          >
+            ✕
+          </button>
         </li>
       ))}
     </ul>

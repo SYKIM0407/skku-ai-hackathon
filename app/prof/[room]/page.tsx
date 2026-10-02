@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 import { useState } from 'react';
 import { ClusterList } from '@/components/prof/ClusterList';
@@ -31,6 +31,7 @@ export default function ProfPage() {
 }
 
 function ProfRoom({ roomId }: { roomId: string }) {
+  const router = useRouter();
   const [listen, setListen] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [notice, setNotice] = useState('');
@@ -151,7 +152,15 @@ function ProfRoom({ roomId }: { roomId: string }) {
         >
           <SpeakerIcon /> 질문 읽어 주기
         </button>
-        {!ended && (
+        {ended ? (
+          // [이 화면에 머무르기]로 남은 뒤에도 언제든 나갈 수 있게
+          <button
+            onClick={() => router.replace('/')}
+            className="min-h-12 rounded-xl bg-[#0b5cff] px-5 font-semibold text-white hover:bg-[#2a72ff]"
+          >
+            처음 화면으로
+          </button>
+        ) : (
           <button
             onClick={endClass}
             className="min-h-12 rounded-xl border-2 border-red-500/80 px-5 font-semibold text-red-400 hover:bg-red-500/10"
@@ -182,7 +191,7 @@ function ProfRoom({ roomId }: { roomId: string }) {
               <option value="recent">최근 순</option>
             </select>
           </div>
-          <ClusterList clusters={sorted} />
+          <ClusterList clusters={sorted} onChange={reloadClusters} />
         </section>
         <aside className="rounded-2xl border border-[#1d3266] bg-[#0c1730]/80 p-6">
           <h2 className="mb-5 flex items-center gap-3 text-2xl font-bold">
