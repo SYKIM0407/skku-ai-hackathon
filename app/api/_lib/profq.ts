@@ -1,8 +1,8 @@
 import 'server-only';
 import { CONFIG } from '@/lib/config';
 import { recentLines } from '@/lib/context';
-import { computeDistribution, totalOf } from '@/lib/distribution';
-import { analyzeAnswers, fallbackSummary } from '@/lib/prompts';
+import { computeDistribution, normalizeAnswer, totalOf } from '@/lib/distribution';
+import { analyzeAnswers, fallbackSummary, filterAnswers } from '@/lib/prompts';
 import { sbAdmin } from '@/lib/supabase/server';
 import type { ProfQSummary, ProfQuestion } from '@/lib/types';
 import { fail, serverError } from './http';
@@ -53,8 +53,26 @@ export async function closeProfQuestion(pqId: number): Promise<{ summary: ProfQS
     // closed인데 summary가 아직 없으면 다른 요청이 분석 중 → 아래에서 같이 계산하고 먼저 저장된 것을 쓴다
   }
 
-  const { data: rows, error: e1 } = await db.from('answers').select('answer').eq('prof_question_id', pqId).order('id');
+  const { data: all, error: e1 } = await db.from('answers').select('id, answer').eq('prof_question_id', pqId).order('id');
   if (e1) return { error: serverError() };
+
+  // 단답·서술형은 AI(P7)가 무관·부적절 응답을 골라 분포·분석에서 뺀다 (선택형은 선택지 안에서만 답할 수 있어 제외).
+  // 같은 답(normalizeAnswer 기준)은 한 번만 검토한다. AI 실패 시 거르지 않고 그대로 진행
+  let rows = all;
+  let excludedIds: number[] = [];
+  if (pq.type !== 'choice' && all.length) {
+    const distinct = [...new Map(all.map((r) => [normalizeAnswer(r.answer), r.answer.trim()])).entries()].filter(([k]) => k);
+    const verdict = await filterAnswers({
+      question: pq.question,
+      expected_answer: pq.expected_answer,
+      answers: distinct.map(([, text]) => text),
+    });
+    if (verdict?.flagged.length) {
+      const bad = new Set(verdict.flagged.map((f) => distinct[f.index][0]));
+      rows = all.filter((r) => !bad.has(normalizeAnswer(r.answer)));
+      excludedIds = all.filter((r) => bad.has(normalizeAnswer(r.answer))).map((r) => Number(r.id));
+    }
+  }
   const distribution = computeDistribution(pq, rows);
   const total = totalOf(distribution);
 
@@ -74,9 +92,12 @@ export async function closeProfQuestion(pqId: number): Promise<{ summary: ProfQS
     if (ai) analysis = ai;
   }
 
-  const summary: ProfQSummary = { total, distribution, ...analysis };
+  const summary: ProfQSummary = { total, distribution, ...analysis, ...(excludedIds.length ? { filtered: true } : {}) };
   const { error: e2 } = await db.from('prof_questions').update({ summary }).eq('id', pqId).is('summary', null);
   if (e2) return { error: serverError() };
+
+  // 걸러진 응답은 남기지 않는다 (무관·부적절 질문을 저장하지 않는 것과 같은 원칙, 규칙 8). 실패해도 결과는 이미 저장됨
+  if (excludedIds.length) await db.from('answers').delete().in('id', excludedIds);
 
   const { data: saved } = await db.from('prof_questions').select('summary').eq('id', pqId).single();
   return { summary: (saved?.summary as ProfQSummary | null) ?? summary };
