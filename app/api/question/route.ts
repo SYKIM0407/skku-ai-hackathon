@@ -9,8 +9,11 @@ import { liveRoom, normRoomId } from '../_lib/room';
 
 /**
  * POST /api/question — 학생 질문 (SPEC §8.3, 흐름 A ①~④)
- * 맥락 조회 → P1 1회 → 무관·부적절은 저장 없이 rejected / AI 실패는 원문 그대로 sent / 관련은 pending 저장 후 review
+ * 맥락 조회 → (강의 문장이 없으면 강의 진행 중 아님 안내) → P1 1회 → 무관·부적절은 저장 없이 rejected
+ * / AI 실패는 원문 그대로 sent / 관련은 pending 저장 후 review
  */
+const NOT_IN_LECTURE = '지금은 강의가 진행 중이 아니에요. 강의가 시작되면 질문해 주세요';
+
 export async function POST(req: Request) {
   const body = await readJson(req);
   const roomId = str(body?.roomId, 10);
@@ -25,6 +28,10 @@ export async function POST(req: Request) {
   const db = sbAdmin();
 
   const lines = await recentLines(room.id, CONFIG.CONTEXT_WINDOW_SEC);
+  // 최근 강의 문장이 없으면(강의 인식·데모가 꺼져 있음) "이거", "?" 같은 질문을 해석할 맥락이 없어
+  // AI가 무관으로 오판한다. AI를 부르지 않고 강의 진행 중이 아님을 알린다 (저장하지 않음)
+  if (!lines.length) return ok<QuestionRes>({ status: 'rejected', message: NOT_IN_LECTURE });
+
   const ai = await interpretQuestion({ raw, lines, glossary: room.glossary });
 
   // 무관·부적절: 어디에도 저장하지 않고 폐기 (규칙 8)
