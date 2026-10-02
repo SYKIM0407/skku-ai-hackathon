@@ -5,3 +5,10 @@ out/
 .env
 .DS_Store
 *.log
+/coverage
+/build
+.vercel
+*.pem
+*.tsbuildinfo
+next-env.d.ts
+.pnp.*

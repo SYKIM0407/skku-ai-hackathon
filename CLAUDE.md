@@ -77,3 +77,5 @@ npm run eval      # scripts/eval.ts: 프롬프트 정확도 평가 (E1~E4)
 3. 커밋 메시지: `feat(T-32): 질문 API에 AI 분류·매칭 연결` 형식
 4. 브랜치: `feat/T-32-question-api` 형식. `main`에 직접 커밋·푸시하지 않는다
 5. PR을 만들 때는 `.github/pull_request_template.md`를 채운다
+
+@AGENTS.md
