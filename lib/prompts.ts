@@ -118,35 +118,40 @@ ${lines.length ? formatLines(lines) : '(없음)'}
 [질문 후보] "${spoken}"
 [이후 5초간 발화] "${after}"
 
-1) 학생들의 응답을 기다리는 실제 질문인지 판별하라. 아래 순서대로 확인한다.
-   a. [이후 5초간 발화]가 질문 후보에 대한 답이나 설명이면 (예: "그건 바로 …", "… 때문이에요", "…입니다", "… 하면 돼요")
-      교수가 스스로 답한 수사적 질문이다 → false
-   b. 수업 진행 안내(예: "쉬었다 할까요", "시작해 볼까요", "들리시죠")나 질문이 아닌 문장 → false
-   c. "생각해 보세요", "누가 대답해 볼까요", "답을 보내 주세요"처럼 응답을 기다리거나, 이후 발화가 없으면 → true
-2) true라면 학생 화면에 표시할 문항으로 정리하라. 강의 맥락을 반영해 문항만 읽어도 이해되게 쓴다.
-3) 답변 형식을 골라라.
-   - choice: 답이 몇 개로 나뉠 때. 선택지 3~4개, 마지막은 반드시 "${DONT_KNOW}"
-   - short: 짧은 단어나 숫자
+1) 먼저 [이후 5초간 발화]가 [질문 후보]에 대한 답이나 설명인지 판단해 after_is_answer에 적어라.
+   - 예: 질문 후보 "왜 먼저 미분을 할까요" + 이후 발화 "그래야 기울기를 구할 수 있기 때문이에요" → true (교수가 스스로 답함)
+   - 예: 이후 발화가 응답을 기다리는 말(생각해 보라, 대답해 보라 등)이거나 이후 발화 없음 → false
+2) 학생들의 응답을 기다리는 실제 질문인지 판별해 is_real_question에 적어라.
+   - after_is_answer가 true면 수사적 질문이므로 반드시 false
+   - 수업 진행 안내(예: "정리하고 넘어갈까요", "마이크 소리 괜찮나요")나 질문이 아닌 문장 → false
+   - 그 밖에 학생에게 묻는 질문이면 → true
+3) true라면 학생 화면에 표시할 문항으로 정리하라. 강의 맥락을 반영해 문항만 읽어도 이해되게 쓴다.
+   "생각해 보세요", "자 그럼" 같은 진행 멘트는 문항에 넣지 않는다.
+4) 답변 형식을 골라라.
+   - choice: "몇 개", "어느 것", "예/아니요"처럼 답이 몇 개로 나뉠 때. 선택지 3~4개, 마지막은 반드시 "${DONT_KNOW}"
+   - short: 선택지로 나누기 어려운 짧은 단어나 숫자
    - open: 의견이나 설명
-4) 정답이 분명하면 expected_answer에 적고, 아니면 null.
+5) 정답이 분명하면 expected_answer에 적고, 아니면 null.
 
 출력 형식 (JSON 하나만. <>는 설명이므로 실제 값으로 바꾼다):
 {
-  "reason": "<1)의 판단 근거 한 문장>",
+  "after_is_answer": <true | false>,
   "is_real_question": <true | false>,
   "question": "<학생 화면에 표시할 문항>",
   "type": "<choice | short | open>",
   "options": [<choice일 때 선택지, 마지막은 "${DONT_KNOW}">],
   "expected_answer": <"정답" 또는 null>,
   "context_line_ids": [<관련 강의 문장 번호(숫자)>]
-}`;
+}}`;
 }
 
 const PROFQ_TYPES: ProfQType[] = ['choice', 'short', 'open'];
 
 /** P2 출력 검증. 테스트를 위해 export */
 export function validateP2(r: Record<string, unknown>, input: P2Input): P2Result {
-  const is_real_question = r.is_real_question === true || r.is_real_question === 'true';
+  // 교수가 바로 스스로 답했다고 AI가 판단했으면 수사적 질문 (AI 판정끼리의 모순 정리)
+  const selfAnswered = r.after_is_answer === true || r.after_is_answer === 'true';
+  const is_real_question = !selfAnswered && (r.is_real_question === true || r.is_real_question === 'true');
   let type: ProfQType = PROFQ_TYPES.includes(r.type as ProfQType) ? (r.type as ProfQType) : 'open';
   let options: string[] | null = null;
 

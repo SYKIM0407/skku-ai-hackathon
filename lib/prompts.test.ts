@@ -47,6 +47,11 @@ describe('validateP2', () => {
     expect(r).toMatchObject({ type: 'open', options: null, question: input.spoken, expected_answer: null });
   });
 
+  it('after_is_answer=true면 수사적 질문으로 강제', () => {
+    expect(validateP2({ after_is_answer: true, is_real_question: true, type: 'open' }, input).is_real_question).toBe(false);
+    expect(validateP2({ after_is_answer: false, is_real_question: true, type: 'open' }, input).is_real_question).toBe(true);
+  });
+
   it('is_real_question은 true일 때만 true', () => {
     expect(validateP2({ is_real_question: 'yes' }, input).is_real_question).toBe(false);
   });
