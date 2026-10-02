@@ -279,6 +279,71 @@ export async function analyzeAnswers(input: P3Input): Promise<P3Result | null> {
   return r ? validateP3(r, input) : null;
 }
 
+// ───────────── P7 교수 질문 응답 거르기 ─────────────
+
+export type AnswerFlag = '무관' | '부적절';
+const ANSWER_FLAGS: AnswerFlag[] = ['무관', '부적절'];
+
+/** answers: 서로 다른 응답 (normalizeAnswer 기준으로 중복 제거한 것) */
+export interface P7Input { question: string; expected_answer: string | null; answers: string[] }
+export interface P7Result { flagged: { index: number; reason: AnswerFlag }[] }
+
+/** 한 번에 검토할 서로 다른 응답 수 상한 (넘는 응답은 검토 없이 정상 처리) */
+const P7_MAX_ANSWERS = 200;
+
+export const P7_SYSTEM = `너는 수업 중 학생 응답 가운데 교수 화면에 보여 주면 안 되는 것만 골라내는 검토자다.
+반드시 JSON만 출력한다.`;
+
+export function p7User({ question, expected_answer, answers }: P7Input): string {
+  const list = answers
+    .slice(0, P7_MAX_ANSWERS)
+    .map((a, i) => `${i}. ${a.trim().slice(0, P3_MAX_ANSWER_LEN)}`)
+    .join('\n');
+  return `[문항] ${question}
+[예상 정답] ${expected_answer ?? '(없음)'}
+[학생 응답] (번호. 응답)
+${list || '(없음)'}
+
+다음에 해당하는 응답만 골라라.
+- "부적절": 욕설, 비속어, 조롱, 성적·혐오 표현, 특정인 비하, 이름·연락처 같은 개인 정보
+- "무관": 문항과 전혀 상관없는 장난·잡담 (예: 배고프다는 말, 의미 없는 웃음, 광고)
+
+다음은 절대 고르지 않는다 (모두 정상 응답):
+- 틀린 답, 엉뚱하지만 진지하게 답하려는 시도. 오해 분석에 꼭 필요하다
+- "모르겠어요", "잘 모르겠음", "?" 같은 모름 표시
+- 짧은 답, 숫자만 있는 답, 맞춤법이 틀린 답
+- 판단이 애매하면 고르지 않는다. 정상 응답을 빼는 것이 더 큰 문제다.
+
+출력 형식 (JSON 하나만. 고를 응답이 없으면 빈 배열):
+{ "flagged": [ { "index": <응답 번호(숫자)>, "reason": "<무관 | 부적절>" } ] }`;
+}
+
+/** P7 출력 검증. 없는 번호·잘못된 사유는 버리고, 같은 번호는 한 번만. 테스트를 위해 export */
+export function validateP7(r: Record<string, unknown>, input: P7Input): P7Result {
+  const n = Math.min(input.answers.length, P7_MAX_ANSWERS);
+  const seen = new Set<number>();
+  const flagged: P7Result['flagged'] = [];
+  for (const f of Array.isArray(r.flagged) ? r.flagged : []) {
+    const o = (f ?? {}) as Record<string, unknown>;
+    const index = Number(o.index);
+    const reason = str(o.reason) as AnswerFlag;
+    if (!Number.isInteger(index) || index < 0 || index >= n || seen.has(index) || !ANSWER_FLAGS.includes(reason)) continue;
+    seen.add(index);
+    flagged.push({ index, reason });
+  }
+  return { flagged };
+}
+
+/**
+ * P7 교수 질문 응답 거르기 (단답·서술형, 마감 시 1회). 무관·부적절 응답 번호를 돌려준다.
+ * 실패하면 null → 거르지 않고 그대로 분석 (SPEC §10.3)
+ */
+export async function filterAnswers(input: P7Input): Promise<P7Result | null> {
+  if (!input.answers.length) return { flagged: [] };
+  const r = await askJSON<Record<string, unknown>>(P7_SYSTEM, p7User(input));
+  return r ? validateP7(r, input) : null;
+}
+
 // ───────────── P6 교안 PDF 핵심 용어 추출 ─────────────
 
 export const P6_SYSTEM = `너는 강의 자료에서 학생이 질문할 때 쓸 만한 핵심 용어를 뽑는 도우미다.

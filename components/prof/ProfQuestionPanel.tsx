@@ -251,6 +251,9 @@ function Result({ q, defaultOpen, reload }: { q: ProfQuestion; defaultOpen: bool
               );
             })}
           </ul>
+          {s.filtered && (
+            <p className="mt-2 text-xs text-slate-500">🧹 수업과 무관하거나 부적절한 응답은 AI가 결과에서 뺐습니다</p>
+          )}
 
           {s.misconceptions.length > 0 && (
             <div className="mt-4">

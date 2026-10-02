@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('server-only', () => ({}));
 vi.mock('./supabase/server', () => ({ sbAdmin: () => { throw new Error('DB 없음'); } }));
 
-const { validateP1, validateP2, validateP3, validateP6, fallbackSummary, p3User, p6User, P6_MAX_CHARS } = await import('./prompts');
+const { validateP1, validateP2, validateP3, validateP6, validateP7, filterAnswers, fallbackSummary, p3User, p6User, p7User, P6_MAX_CHARS } = await import('./prompts');
 const { parseJSONObject } = await import('./llm');
 
 const lines = [
@@ -133,5 +133,30 @@ describe('P6', () => {
   it('p6User: 교안 텍스트는 앞부분 2만 자까지만', () => {
     const u = p6User('가'.repeat(P6_MAX_CHARS + 500));
     expect(u.match(/가/g)?.length).toBe(P6_MAX_CHARS);
+  });
+});
+
+describe('P7 응답 거르기', () => {
+  const input = { question: '고윳값은 몇 개일까요?', expected_answer: '2개', answers: ['2개', '3개', 'ㅋㅋㅋ', '모르겠어요'] };
+
+  it('validateP7: 없는 번호·잘못된 사유·중복 번호는 버린다', () => {
+    const r = validateP7(
+      { flagged: [{ index: 2, reason: '무관' }, { index: 2, reason: '부적절' }, { index: 9, reason: '무관' }, { index: 1, reason: '오답' }, { index: '0', reason: '부적절' }] },
+      input,
+    );
+    expect(r.flagged).toEqual([{ index: 2, reason: '무관' }, { index: 0, reason: '부적절' }]);
+    expect(validateP7({ flagged: 'x' }, input).flagged).toEqual([]);
+    expect(validateP7({}, input).flagged).toEqual([]);
+  });
+
+  it('p7User: 응답에 번호를 붙이고, 틀린 답·모름은 고르지 말라고 안내', () => {
+    const u = p7User(input);
+    expect(u).toContain('0. 2개');
+    expect(u).toContain('3. 모르겠어요');
+    expect(u).toContain('틀린 답');
+  });
+
+  it('filterAnswers: 응답이 없으면 AI를 부르지 않고 빈 결과', async () => {
+    expect(await filterAnswers({ ...input, answers: [] })).toEqual({ flagged: [] });
   });
 });
