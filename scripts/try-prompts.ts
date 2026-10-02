@@ -1,5 +1,5 @@
 /**
- * P1·P2 빠른 확인 (DB 없이 scripts/demo-lecture.json을 메모리 강의 문장으로 사용)
+ * P1·P2·P3 빠른 확인 (DB 없이 scripts/demo-lecture.json을 메모리 강의 문장으로 사용)
  *
  *   npx tsx --conditions=react-server scripts/try-prompts.ts
  *   npx tsx --conditions=react-server scripts/try-prompts.ts --providers openai,anthropic --runs 3
@@ -46,7 +46,8 @@ const glossary = ['고윳값', '고유벡터', '람다', '행렬식', '특성방
 // ───────────── 확인 케이스 ─────────────
 type P1Case = { kind: 'P1'; name: string; raw: string; upto: number; expect: { category: string; refIncludes?: number } };
 type P2Case = { kind: 'P2'; name: string; spoken: string; after: string; upto: number; expect: { real: boolean; type?: string } };
-type Case = P1Case | P2Case;
+type P3Case = { kind: 'P3'; name: string; answers: string[]; upto: number };
+type Case = P1Case | P2Case | P3Case;
 
 const cases: Case[] = [
   // 필수 (팀 프롬프트)
@@ -59,14 +60,19 @@ const cases: Case[] = [
   { kind: 'P1', name: '시험에 나와요?', raw: '이거 시험에 나와요?', upto: L_DET, expect: { category: '관련' } },
   { kind: 'P1', name: '아까 방향 안 바뀌는 거', raw: '아까 방향 안 바뀐다는 게 뭔소리임', upto: L_DET, expect: { category: '관련', refIncludes: findId('방향이 바뀌지') } },
   { kind: 'P1', name: '부적절', raw: '교수님 설명 진짜 개노잼이네 ㅋㅋ', upto: L_DET, expect: { category: '부적절' } },
+  // P3: 2×2 행렬 고윳값 개수 응답 13개 (3개 = 행렬 크기와 혼동, 4개 = 원소 수와 혼동)
+  { kind: 'P3', name: '고윳값 개수 응답 분석', upto: L_THINK,
+    answers: ['2개', '2개', '2 개', '2개', '2개', '2개', '2개', '2개', '4개', '3개', '4개', '모르겠어요', '1개'] },
 ];
+const P3_Q = { type: 'choice' as const, options: ['1개', '2개', '3개', '4개', '모르겠어요'] };
 
 // ───────────── 실행 ─────────────
 const MODEL_ENV: Record<string, string | undefined> = { openai: process.env.OPENAI_MODEL, anthropic: process.env.ANTHROPIC_MODEL };
 const baseModel = process.env.LLM_MODEL;
 
 async function main() {
-  const { interpretQuestion, judgeProfQuestion } = await import('../lib/prompts');
+  const { interpretQuestion, judgeProfQuestion, analyzeAnswers } = await import('../lib/prompts');
+  const { computeDistribution } = await import('../lib/distribution');
   const summary: string[] = [];
 
   for (const provider of providers) {
@@ -91,6 +97,17 @@ async function main() {
           else {
             ok = res.category === c.expect.category && (c.expect.refIncludes == null || res.ref_line_ids.includes(c.expect.refIncludes));
             detail = `${res.category} refs=[${res.ref_line_ids.map((i) => 'L' + i).join(',')}] conf=${res.confidence} → "${res.refined}"${res.candidates.length ? ` 후보 ${res.candidates.length}개` : ''}`;
+          }
+        } else if (c.kind === 'P3') {
+          const distribution = computeDistribution(P3_Q, c.answers.map((answer) => ({ answer })));
+          const res = await analyzeAnswers({
+            question: '방금 예제의 2×2 행렬은 고윳값이 몇 개일까요?', expected_answer: '2개',
+            context_lines: linesAt(c.upto), distribution, answers: c.answers,
+          });
+          if (!res) { fail++; detail = 'null (AI 실패)'; }
+          else {
+            ok = res.misconceptions.length >= 1 && res.spoken_summary.length > 0;
+            detail = `오해 ${res.misconceptions.map((m) => `"${m.text}"(${m.ratio})`).join(', ') || '없음'} / 제안: ${res.suggestion} / 요약: "${res.spoken_summary}"`;
           }
         } else {
           const res = await judgeProfQuestion({ lines: linesAt(c.upto), spoken: c.spoken, after: c.after });
