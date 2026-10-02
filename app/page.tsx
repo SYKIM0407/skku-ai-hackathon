@@ -40,7 +40,7 @@ export default function Home() {
         <h1>
           <Image src="/logo.png" alt="갸웃" width={781} height={242} priority className="mx-auto h-auto w-80" />
         </h1>
-        <p className="mt-3 text-gray-600">수업을 함께 듣고, 학생과 교수 사이에서 대신 손을 들어 주는 AI</p>
+        <p className="mt-3 text-gray-600">갸웃한 순간 편하게 묻고, 교수님께 바로 닿는 수업</p>
       </header>
 
       <div className="grid gap-6 md:grid-cols-2">

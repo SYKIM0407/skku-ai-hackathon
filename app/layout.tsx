@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "갸웃",
-  description: "수업을 함께 듣고, 학생과 교수 사이에서 대신 손을 들어 주는 AI",
+  description: "갸웃한 순간 편하게 묻고, 교수님께 바로 닿는 수업",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
