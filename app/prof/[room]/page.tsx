@@ -122,9 +122,16 @@ function ProfRoom({ roomId }: { roomId: string }) {
         {!ended && (
           <button
             onClick={() => setListen((v) => !v)}
-            className={`rounded-xl px-4 py-3 text-sm font-semibold ${listen ? 'bg-gray-100 text-gray-800' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}
+            title={listen ? '누르면 강의 인식을 멈춥니다' : undefined}
+            className={`flex flex-col items-start rounded-xl px-4 py-2 text-sm font-semibold ${listen ? 'bg-gray-100 text-gray-800' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}
           >
-            {listen ? REC_LABEL[recStatus] : '🎙 강의 인식 시작'}
+            <span>{listen ? REC_LABEL[recStatus] : '🎙 강의 인식 시작'}</span>
+            {/* 문장 내용(자막)은 보여 주지 않고, 서버에 저장된 문장 수만 표시해 제대로 듣고 있는지 확인 */}
+            {(listen || feed.lineCount > 0) && (
+              <span key={feed.lineCount} className="animate-[pulse_0.6s_ease-out_1] text-xs font-normal opacity-70">
+                📝 문장 {feed.lineCount}개 받음
+              </span>
+            )}
           </button>
         )}
         <button
