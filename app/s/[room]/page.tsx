@@ -6,6 +6,7 @@ import { MyQuestions } from '@/components/student/MyQuestions';
 import { ProfQuestionCard } from '@/components/student/ProfQuestionCard';
 import { QuestionComposer } from '@/components/student/QuestionComposer';
 import { LiveBadge } from '@/components/ui/LiveBadge';
+import { RoomEndedOverlay } from '@/components/ui/RoomEndedOverlay';
 import { useMounted } from '@/components/ui/useMounted';
 import { getAnonId, store } from '@/lib/api-client';
 import { useLive } from '@/lib/live';
@@ -80,6 +81,9 @@ function StudentRoom({ roomId }: { roomId: string }) {
       </main>
 
       {!ended && anonId && <QuestionComposer roomId={roomId} anonId={anonId} onSent={addMine} />}
+
+      {/* rooms는 주기 조회라 교수가 종료하면 POLL_INTERVAL_MS 안에 감지된다 */}
+      {ended && <RoomEndedOverlay title="수업이 종료되었습니다" message="참여해 주셔서 감사합니다." seconds={5} />}
     </div>
   );
 }

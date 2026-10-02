@@ -7,6 +7,7 @@ import { ClusterList } from '@/components/prof/ClusterList';
 import { ProfQuestionPanel } from '@/components/prof/ProfQuestionPanel';
 import { useLectureFeed } from '@/components/prof/useLectureFeed';
 import { LiveBadge } from '@/components/ui/LiveBadge';
+import { RoomEndedOverlay } from '@/components/ui/RoomEndedOverlay';
 import { useMounted } from '@/components/ui/useMounted';
 import { postJSON } from '@/lib/api-client';
 import { useLive } from '@/lib/live';
@@ -34,6 +35,7 @@ function ProfRoom({ roomId }: { roomId: string }) {
   const [showQr, setShowQr] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
   const [notice, setNotice] = useState('');
+  const [stay, setStay] = useState(false); // 종료 후 결과를 더 보려고 이 화면에 남기로 함
 
   const { data: room, reload: reloadRoom } = useLive<Pick<Room, 'title' | 'status'> | null>(
     async () => (await sb().from('rooms').select('title, status').eq('id', roomId).maybeSingle()).data,
@@ -194,6 +196,15 @@ function ProfRoom({ roomId }: { roomId: string }) {
             </button>
           )}
         </div>
+      )}
+
+      {ended && !stay && (
+        <RoomEndedOverlay
+          title="수업이 종료되었습니다"
+          message="강의 인식 결과를 삭제했습니다. 학생 화면도 처음 화면으로 돌아갑니다."
+          seconds={5}
+          onStay={() => setStay(true)}
+        />
       )}
 
       {showQr && (
