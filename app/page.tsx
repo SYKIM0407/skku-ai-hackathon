@@ -2,10 +2,12 @@
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
-import { postForm, postJSON } from '@/lib/api-client';
+import { postJSON } from '@/lib/api-client';
+import { extractPdfText } from '@/lib/pdf-text';
 import type { CreateRoomRes, MaterialRes } from '@/lib/types';
 
-const MAX_PDF_MB = 10;
+// 브라우저에서 글자만 뽑아 보내므로 서버 크기 제한과 무관. 너무 큰 파일은 메모리 때문에만 막는다
+const MAX_PDF_MB = 50;
 
 /** 시작 화면 (SPEC §9.1): 수업 만들기 / 수업 참여 */
 export default function Home() {
@@ -15,7 +17,8 @@ export default function Home() {
   const [code, setCode] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState<'' | 'room' | 'material'>('');
+  const [busy, setBusy] = useState<'' | 'room' | 'extract' | 'material'>('');
+  const [progress, setProgress] = useState('');
   const [error, setError] = useState('');
   // 교안 업로드가 실패해도 수업방은 이미 만들어졌으므로 그대로 시작할 수 있게 둔다
   const [createdRoom, setCreatedRoom] = useState('');
@@ -48,15 +51,23 @@ export default function Home() {
       setCreatedRoom(roomId);
     }
 
-    // 교안 PDF → 텍스트 추출 → 핵심 용어를 용어집에 합친다 (FR-R5). 직접 입력한 용어는 유지된다
+    // 교안 PDF → (브라우저에서) 텍스트 추출 → 서버가 핵심 용어를 용어집에 합친다 (FR-R5). 직접 입력한 용어는 유지된다
     if (file) {
+      setBusy('extract');
+      const pdf = await extractPdfText(file, (page, total) => setProgress(`${page}/${total}쪽`));
+      setProgress('');
+      if ('error' in pdf) {
+        setError(
+          pdf.error === 'no_text'
+            ? '글자를 찾을 수 없는 PDF예요(스캔본). 수업은 만들어졌으니 용어를 직접 입력하거나 그대로 시작해 주세요.'
+            : 'PDF를 읽을 수 없어요. 수업은 만들어졌으니 다른 PDF를 골라 다시 누르거나 그대로 시작해 주세요.',
+        );
+        return setBusy('');
+      }
       setBusy('material');
-      const form = new FormData();
-      form.append('roomId', roomId);
-      form.append('file', file);
-      const up = await postForm<MaterialRes>('/api/room/material', form);
+      const up = await postJSON<MaterialRes>('/api/room/material', { roomId, text: pdf.text });
       if (!up.ok) {
-        setError(`${up.message} — 수업은 만들어졌어요. 그대로 시작하거나 다른 PDF를 골라 다시 눌러 주세요.`);
+        setError(`${up.message} — 수업은 만들어졌어요. 그대로 시작하거나 다시 눌러 주세요.`);
         return setBusy('');
       }
     }
@@ -133,7 +144,7 @@ export default function Home() {
               disabled={!title.trim() || !!busy}
               className="mt-auto rounded-xl border-2 border-[#2563eb] bg-[#0b2a6b] py-4 text-lg font-semibold hover:bg-[#10378a] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {busy === 'room' ? '만드는 중…' : busy === 'material' ? '교안에서 용어 뽑는 중…' : createdRoom ? '다시 시도' : '수업 만들기'}
+              {busy === 'room' ? '만드는 중…' : busy === 'extract' ? `교안 읽는 중… ${progress}` : busy === 'material' ? '핵심 용어 뽑는 중…' : createdRoom ? '다시 시도' : '수업 만들기'}
             </button>
             {error && <p className="text-sm text-red-400">{error}</p>}
             {createdRoom && !busy && (

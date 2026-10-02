@@ -199,7 +199,7 @@
 | AI | `lib/llm.ts`에서 공급자 전환. 응답 속도 기준 가장 빠른 소형 모델 (D-2) |
 | 음성 인식 | Web Speech API (교수 브라우저) |
 | 음성 출력 | `speechSynthesis` (교수 브라우저, 교수 요청 시에만) |
-| PDF 텍스트 추출 | `pdf-parse` |
+| PDF 텍스트 추출 | `pdfjs-dist` (브라우저, `public/pdf.worker.min.mjs`) |
 | QR | `qrcode.react` |
 
 ### 6.2 구성도
@@ -353,10 +353,13 @@ export type ApiError = { error: { code: string; message: string } };
 { "roomId": "K7Q2" }
 ```
 
-**`POST /api/room/material`** (multipart: `roomId`, `file`)
+**`POST /api/room/material`**
 ```jsonc
-// res 200 — PDF 텍스트 추출 → P6 → rooms.glossary 저장
+// req — PDF → 텍스트 추출은 브라우저(lib/pdf-text.ts, pdf.js)에서 하고 텍스트만 보낸다 (Vercel 요청 4.5MB 제한·서버 PDF 라이브러리 회피)
+{ "roomId": "K7Q2", "text": "교안 전체 텍스트 (앞 10만 자)" }
+// res 200 — P6 → rooms.glossary 저장 (직접 입력한 용어 뒤에 합침), rooms.material_text 저장
 { "glossary": ["고유벡터", "고윳값", "람다", "특성방정식"] }
+// res 400 text 비어 있음(스캔본) · 502 AI_FAILED (텍스트는 저장됨, 용어 직접 입력 안내)
 ```
 
 **`POST /api/room/end`**
