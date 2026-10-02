@@ -92,7 +92,7 @@ export async function closeProfQuestion(pqId: number): Promise<{ summary: ProfQS
     if (ai) analysis = ai;
   }
 
-  const summary: ProfQSummary = { total, distribution, ...analysis, ...(excludedIds.length ? { filtered: true } : {}) };
+  const summary: ProfQSummary = { total, distribution, ...analysis };
   const { error: e2 } = await db.from('prof_questions').update({ summary }).eq('id', pqId).is('summary', null);
   if (e2) return { error: serverError() };
 

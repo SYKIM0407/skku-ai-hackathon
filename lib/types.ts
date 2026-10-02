@@ -73,8 +73,6 @@ export interface ProfQSummary {
   misconceptions: Misconception[];
   suggestion: string | null;
   spoken_summary: string;
-  /** 단답·서술형에서 AI(P7)가 무관·부적절 응답을 분포·분석에서 뺐으면 true. 개수는 남기지 않는다 (규칙 8) */
-  filtered?: boolean;
 }
 
 /** 학생 화면이 localStorage에 보관하는 내 질문 (SPEC §8.5) */

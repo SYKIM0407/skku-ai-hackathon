@@ -295,39 +295,50 @@ export const P7_SYSTEM = `너는 수업 중 학생 응답 가운데 교수 화�
 반드시 JSON만 출력한다.`;
 
 export function p7User({ question, expected_answer, answers }: P7Input): string {
+  // 번호는 모델이 밀려 쓰는 일이 있어(검증에서 정상 응답이 통째로 빠짐) 응답 글자를 그대로 돌려받는다
   const list = answers
     .slice(0, P7_MAX_ANSWERS)
-    .map((a, i) => `${i}. ${a.trim().slice(0, P3_MAX_ANSWER_LEN)}`)
+    .map((a) => `- ${JSON.stringify(a.trim().slice(0, P3_MAX_ANSWER_LEN))}`)
     .join('\n');
   return `[문항] ${question}
 [예상 정답] ${expected_answer ?? '(없음)'}
-[학생 응답] (번호. 응답)
+[학생 응답] (한 줄에 하나, 따옴표 안이 응답)
 ${list || '(없음)'}
 
 다음에 해당하는 응답만 골라라.
 - "부적절": 욕설, 비속어, 조롱, 성적·혐오 표현, 특정인 비하, 이름·연락처 같은 개인 정보
-- "무관": 문항과 전혀 상관없는 장난·잡담 (예: 배고프다는 말, 의미 없는 웃음, 광고)
+- "무관": 문항과 전혀 상관없는 장난·잡담 (예: 배고프다는 말, 광고)
+- "무관": 답의 내용이 전혀 없는 응답. 웃음·감탄"만", 의미 없는 자모·키보드 연타"만", 이모지·마침표"만" 있는 것
 
 다음은 절대 고르지 않는다 (모두 정상 응답):
-- 틀린 답, 엉뚱하지만 진지하게 답하려는 시도. 오해 분석에 꼭 필요하다
-- "모르겠어요", "잘 모르겠음", "?" 같은 모름 표시
+- 틀린 답, 엉뚱하거나 말이 안 되는 답(터무니없이 큰 수, 무한 등). 오해 분석에 꼭 필요하다
+- 웃음·이모지가 섞여 있어도 답이나 모름 표시가 함께 있는 응답
+- "모르겠어요", "잘 모르겠음", "?", "ㅠㅠ" 같은 모름 표시
 - 짧은 답, 숫자만 있는 답, 맞춤법이 틀린 답
 - 판단이 애매하면 고르지 않는다. 정상 응답을 빼는 것이 더 큰 문제다.
 
-출력 형식 (JSON 하나만. 고를 응답이 없으면 빈 배열):
-{ "flagged": [ { "index": <응답 번호(숫자)>, "reason": "<무관 | 부적절>" } ] }`;
+형태로 판단하는 예 (응답 → 판정):
+"ㅋㅋㅋ" → 무관 / "ㅎㅎ" → 무관 / "ㅁㄴㅇㄹ" → 무관 / "ㅋㅋ 3개" → 정상 / "ㅎㅎㅎ 모르겠어요" → 정상 / "무한개" → 정상 / "ㅠㅠ" → 정상
+(웃음 뒤에 "몰라요"·"모르겠어요" 같은 말이 붙으면 모름 표시이므로 정상)
+
+출력 형식 (JSON 하나만. 고른 응답만 넣고, answer에는 [학생 응답]의 따옴표 안 글자를 그대로 쓴다. 없으면 빈 배열):
+{ "flagged": [ { "answer": "<응답 그대로>", "reason": "<무관 | 부적절>" } ] }`;
 }
 
-/** P7 출력 검증. 없는 번호·잘못된 사유는 버리고, 같은 번호는 한 번만. 테스트를 위해 export */
+/** P7 출력 검증. 입력에 없는 응답·잘못된 사유는 버리고, 같은 응답은 한 번만. 테스트를 위해 export */
 export function validateP7(r: Record<string, unknown>, input: P7Input): P7Result {
-  const n = Math.min(input.answers.length, P7_MAX_ANSWERS);
+  const indexOf = new Map<string, number>();
+  input.answers.slice(0, P7_MAX_ANSWERS).forEach((a, i) => {
+    const k = normalizeAnswer(a);
+    if (k && !indexOf.has(k)) indexOf.set(k, i);
+  });
   const seen = new Set<number>();
   const flagged: P7Result['flagged'] = [];
   for (const f of Array.isArray(r.flagged) ? r.flagged : []) {
     const o = (f ?? {}) as Record<string, unknown>;
-    const index = Number(o.index);
+    const index = indexOf.get(normalizeAnswer(str(o.answer)));
     const reason = str(o.reason) as AnswerFlag;
-    if (!Number.isInteger(index) || index < 0 || index >= n || seen.has(index) || !ANSWER_FLAGS.includes(reason)) continue;
+    if (index === undefined || seen.has(index) || !ANSWER_FLAGS.includes(reason)) continue;
     seen.add(index);
     flagged.push({ index, reason });
   }
