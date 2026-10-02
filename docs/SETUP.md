@@ -132,7 +132,7 @@ T-04 먼저 해줘. TASKS.md §1의 함수 계약대로 lib/context.ts, llm.ts, 
 | 증상 | 해결 |
 |---|---|
 | 마이크 권한이 안 뜸 | `localhost` 또는 HTTPS에서만 동작. 다른 PC는 Vercel URL로 |
-| 받아쓰기가 아무것도 안 함 | 크롬인지 확인 (사파리·파이어폭스 미지원). 가짜 강의 모드로 우회 |
+| 받아쓰기가 아무것도 안 함 | 크롬인지 확인 (사파리·파이어폭스 미지원) |
 | Realtime 이벤트가 안 옴 | schema.sql 마지막 `alter publication` 실행 여부 확인, `NEXT_PUBLIC_USE_REALTIME=false`로 폴링 |
 | 학생이 questions를 못 읽음 | 의도된 설계 (RLS로 원문 보호). 내 질문은 localStorage, 인원은 clusters 조회 |
 | 교수 화면에서 transcripts를 못 읽음 | 의도된 설계 (강의 인식 결과는 화면에 표시하지 않음, 서버에서만 사용) |
