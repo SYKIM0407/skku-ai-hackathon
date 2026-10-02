@@ -232,6 +232,7 @@
   api/transcript/route.ts         POST 강의 인식 문장 저장
   api/question/route.ts           POST 학생 질문 (AI 1회)
   api/question/confirm/route.ts   POST 보내기/취소 → 묶기
+  api/cluster/read/route.ts       POST 낭독한 묶음 표시
   api/prof-q/detect/route.ts      POST 교수 질문 판별
   api/prof-q/open/route.ts        POST 학생에게 보내기 / 직접 질문
   api/prof-q/dismiss/route.ts     POST 무시
@@ -272,6 +273,14 @@
 | `answers` | 학생 응답 (1인 1회) | prof_question_id, anon_id, answer |
 
 뷰: `answer_counts` (교수 질문별 응답 수)
+
+서버 전용 함수 (API route에서 service role로 `rpc` 호출, anon 실행 권한 없음):
+
+| 함수 | 용도 |
+|---|---|
+| `recent_lines(p_room, p_sec)` | 최근 `p_sec`초 강의 인식 문장과 `ago_sec`(DB `now()` 기준 몇 초 전) |
+| `join_cluster(p_room, p_qid, p_title, p_refs)` | 묶기 규칙 1~3 적용 + 인원 증가 + 질문 `sent` 처리를 방 단위 잠금으로 한 번에 |
+| `prof_q_answerable(p_id)` | `status='open'`이고 `closes_at`이 지나지 않았는지 (DB 시각 기준) |
 
 - 무관·부적절 판정 질문은 **어떤 테이블에도 저장하지 않는다.**
 - 강의 문장 원문은 `transcripts`에만 있고, 묶음에는 문장 번호(`ref_line_ids`)만 저장한다. 수업 종료 시 강의 내용이 남지 않도록 하기 위함이다.
@@ -412,6 +421,15 @@ export type ApiError = { error: { code: string; message: string } };
 2. 강의 시점이 없는 질문은 새 묶음 (P2: 프롬프트 P4로 의미 기반 합류)
 3. 새 묶음의 `title`은 `refined`
 4. 후보를 고른 경우 `refined`를 그 후보로 바꾼 뒤 묶는다
+5. 1~3은 DB 함수 `join_cluster`로 한 번에 처리한다 (동시 [보내기]에도 인원이 꼬이지 않게)
+
+**`POST /api/cluster/read`** (교수 화면 [질문 읽어 주기] 후 호출)
+```jsonc
+// req
+{ "clusterId": 7 }
+// res 200 — read_aloud=true
+{ "ok": true }
+```
 
 ### 8.4 교수 질문
 

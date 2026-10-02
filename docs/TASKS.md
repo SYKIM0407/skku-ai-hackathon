@@ -41,8 +41,9 @@ P ──(강의 인식 문장, 교수 질문 후보)──▶ B
 
 ```ts
 // lib/context.ts
-export async function recentLines(roomId: string, at: Date, seconds?: number): Promise<TranscriptLine[]>;
-export function formatLines(lines: TranscriptLine[], at: Date): string;
+// 시각은 DB now() 기준 (supabase 함수 recent_lines). ago_sec = 몇 초 전
+export async function recentLines(roomId: string, seconds?: number): Promise<TranscriptLine[]>;
+export function formatLines(lines: TranscriptLine[]): string;
 // lib/llm.ts
 export async function askJSON<T>(system: string, user: string, timeoutMs?: number): Promise<T | null>;
 // lib/prompts.ts
@@ -94,7 +95,7 @@ export async function extractGlossary(text: string): Promise<string[] | null>;  
 | T-11 | P0 | `lib/speech.ts`: 음성 인식 훅 (ko-KR, final → `/api/transcript`, 자동 재시작, 🟢/🔴 상태만 표시, 인식 결과 미표시) | T-31 | 30초 말하면 DB에 문장 저장, 화면에 문장이 보이지 않음 |
 | T-12 | P0 | 가짜 강의 모드: `scripts/demo-lecture.json`을 delay대로 `/api/transcript`에 전송 (숨김 버튼) | T-31 | 마이크 없이 인식 결과가 쌓임 |
 | T-13 | P0 | 질문 목록: Realtime 구독 + 주기 조회 전환, 인원 내림차순 | T-33 | 학생 질문 후 2초 안에 갱신 |
-| T-14 | P0 | `speak()` + [질문 읽어 주기]: 버튼을 눌렀을 때만 안 읽은 묶음 중 최대 인원 낭독, `read_aloud` 표시 | T-13 | 버튼 없이는 음성이 나오지 않음 |
+| T-14 | P0 | `speak()` + [질문 읽어 주기]: 버튼을 눌렀을 때만 안 읽은 묶음 중 최대 인원 낭독, `/api/cluster/read`로 `read_aloud` 표시 | T-13 | 버튼 없이는 음성이 나오지 않음 |
 | T-15 | P0 | 교수 질문 후보 감지: 어미 정규식 + 5초 이후 발화 수집 → `/api/prof-q/detect` | T-11, T-34 | 대본의 실제 질문에만 알림 |
 | T-16 | P0 | 교수 질문 패널: 감지 알림 [보내기]/[무시], 남은 시간·응답 수, [마감](시간 종료 시 자동), 결과(분포 막대·흔한 오해·다시 설명할 내용) + [요약 읽어 주기] | T-34, T-36 | M3 완료 기준 통과 |
 | T-17 | P1 | [직접 질문하기]: 문항·형식·선택지 입력 → `/api/prof-q/open` | T-16 | 직접 입력 질문이 학생 화면에 표시 |
@@ -119,7 +120,7 @@ export async function extractGlossary(text: string): Promise<string[] | null>;  
 | T-30 | P0 | `/api/room` (방 코드 생성·중복 확인), `/api/room/end` (transcripts 삭제, status='ended') | T-01 | SPEC §8.1 형식 |
 | T-31 | P0 | `/api/transcript` | T-01 | 서버 시각으로 저장 |
 | T-32 | P0 | `/api/question`: 맥락 조회 → P1 → 무관·부적절 폐기(저장 안 함) / 관련 pending 저장 / AI 실패 시 원문 전송 | T-04, T-41 | SPEC §8.3 세 가지 응답, 제외 질문이 DB에 없음 |
-| T-33 | P0 | `/api/question/confirm` + `lib/cluster.ts` (send·cancel·후보 선택, 강의 시점 기준 묶기) | T-32 | 같은 문장을 가리킨 질문이 한 묶음 |
+| T-33 | P0 | `/api/question/confirm` + `lib/cluster.ts` (send·cancel·후보 선택, `join_cluster` 함수로 강의 시점 기준 묶기), `/api/cluster/read` | T-32 | 같은 문장을 가리킨 질문이 한 묶음 |
 | T-34 | P0 | `/api/prof-q/detect` (P2, 진행 중 질문 있으면 보류), `/open` (감지·직접), `/dismiss` | T-42 | SPEC §8.4 |
 | T-35 | P0 | `/api/answer`: 1인 1회(409), 마감(410) | T-34 | 중복·마감 처리 |
 | T-36 | P0 | `/api/prof-q/close`: 분포 코드 계산 + P3 + 실패 대체 | T-35, T-43 | summary 저장 |
