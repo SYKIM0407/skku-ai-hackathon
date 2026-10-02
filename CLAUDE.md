@@ -21,7 +21,7 @@
 | `CONTRIBUTING.md` | 브랜치·커밋·PR 규칙 |
 | `supabase/schema.sql` | DB 스키마 |
 
-사용자가 "T-32 구현해줘"처럼 태스크 번호를 주면: `docs/TASKS.md`에서 해당 행(내용·의존·완료 기준)을 찾고, 관련 SPEC 절을 읽은 뒤 작업한다. 의존 태스크가 아직 없으면 `lib/mock.ts`나 시그니처만 있는 함수로 우회하고 그 사실을 알린다.
+사용자가 "T-32 구현해줘"처럼 태스크 번호를 주면: `docs/TASKS.md`에서 해당 행(내용·의존·완료 기준)을 찾고, 관련 SPEC 절을 읽은 뒤 작업한다. 의존 태스크가 아직 없으면 시그니처만 있는 함수로 우회하고 그 사실을 알린다.
 
 ## 기술 스택
 
@@ -39,7 +39,7 @@ npm run dev       # 로컬 개발 (http://localhost:3000)
 npm run build     # 빌드 확인 (PR 전 필수)
 npm run lint
 npm test          # vitest (AI 출력 검증 함수, 묶기 로직 등 단위 테스트)
-npm run eval      # scripts/eval.ts: 프롬프트 정확도 평가 (E1~E4)
+npm run eval      # scripts/try-prompts.ts: 데모 대본·평가 데이터로 P1·P2·P3 확인 (.env.local의 AI 키 필요)
 ```
 
 ## 반드시 지킬 규칙

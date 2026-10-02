@@ -236,6 +236,8 @@
   api/question/route.ts           POST 학생 질문 (AI 1회)
   api/question/confirm/route.ts   POST 보내기/취소 → 묶기
   api/cluster/read/route.ts       POST 낭독한 묶음 표시
+  api/cluster/join/route.ts       POST [나도 모르겠어요]
+  api/cluster/delete/route.ts     POST 교수가 묶음 삭제
   api/prof-q/detect/route.ts      POST 교수 질문 판별
   api/prof-q/open/route.ts        POST 학생에게 보내기 / 직접 질문
   api/prof-q/dismiss/route.ts     POST 무시
@@ -253,11 +255,16 @@
   cluster.ts                      묶기 로직
   speech.ts                       음성 인식·음성 출력 훅
   supabase/server.ts, client.ts
-  mock.ts                         백엔드 완성 전 프론트용 목 데이터
+  live.ts                         Realtime 구독 + 주기 조회 훅
+  api-client.ts                   화면용 API 호출·localStorage·익명 ID
+  distribution.ts                 교수 질문 답변 분포 계산
+  pdf-text.ts                     교안 PDF 텍스트 추출 (브라우저)
 /supabase/schema.sql
 /scripts
-  demo-lecture.json               가짜 강의 대본
-  eval/*.json, eval.ts            평가
+  demo-lecture.json               데모 강의 대본 (AI 확인용)
+  eval-data.json                  평가 데이터 E1~E3
+  try-prompts.ts                  프롬프트 확인 (npm run eval)
+  check-env.ts, seed-demo-room.ts 시연 환경 점검·백업 수업방
 ```
 
 ---
@@ -634,7 +641,7 @@ export type ApiError = { error: { code: string; message: string } };
 | E3 | AI 거르기 | 무관·부적절 15개 + 경계 사례 15개 ("시험에 나와요?", "ㅁㄹ", "?") | 제외율 / 오제외율 |
 | E4 | 응답 속도 | 질문 입력 → 승인 화면 20회 | 평균·최대 |
 
-`scripts/eval.ts`로 실행하고 결과를 `docs/EVAL_RESULTS.md`에 기록한다.
+`npm run eval`(`scripts/try-prompts.ts`)로 E1~E3을 확인한다. 정식 평가 스크립트(T-46)는 이번 범위에서 제외.
 
 ---
 

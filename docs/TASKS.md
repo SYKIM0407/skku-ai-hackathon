@@ -26,7 +26,7 @@
 | **S · 학생 화면** | (이름) | `app/page.tsx`, `app/s/**`, `components/student/**`, `components/ui/**` |
 | **B · 백엔드** | (이름) | `app/api/**`, `lib/supabase/**`, `lib/cluster.ts`, `supabase/schema.sql`, 배포 |
 | **A · AI·품질** | (이름) | `lib/llm.ts`, `lib/prompts.ts`, `lib/context.ts`, `scripts/demo-lecture.json`, `scripts/eval*`, `docs/PROMPTS.md`, 발표 자료 |
-| **공동 (계약)** | B 관리, 전원 리뷰 | `lib/types.ts`, `lib/config.ts`, `lib/mock.ts`, `docs/SPEC.md` |
+| **공동 (계약)** | B 관리, 전원 리뷰 | `lib/types.ts`, `lib/config.ts`, `docs/SPEC.md` (`lib/mock.ts`는 개발 완료 후 삭제) |
 
 ### 연결 지점
 
@@ -136,7 +136,7 @@ export async function extractGlossary(text: string): Promise<string[] | null>;  
 | T-43 | P0 | P3 `analyzeAnswers` + 실패 대체 | T-40 | 오해 1~2개, 정중한 요약문 |
 | T-44 | P1 | P6 `extractGlossary` | T-40 | 샘플 PDF에서 용어 추출 |
 | T-45 | P0 | `scripts/demo-lecture.json` 데모 대본 + 평가 데이터 E1~E3 | - | 개념 3~4개, 수사적/실제 질문 포함 |
-| T-46 | P1 | `scripts/eval.ts` + `npm run eval` + `docs/EVAL_RESULTS.md` | T-41, T-42, T-45 | E1~E4 수치 출력 |
+| T-46 | - | ~~`scripts/eval.ts` + `npm run eval` + `docs/EVAL_RESULTS.md`~~ **제외**: `npm run eval`은 `scripts/try-prompts.ts`로 대체 | T-41, T-42, T-45 | - |
 | T-47 | P1 | 평가 기반 프롬프트 개선 (PR마다 eval 결과 첨부) | T-46 | 개선 전후 수치 기록 |
 | T-48 | P0 | 발표 자료 + 3분 시연 대본 + 예상 질문 답변 | M3 | 리허설 가능 |
 

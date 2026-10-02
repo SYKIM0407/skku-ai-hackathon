@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 외부 라이브러리 번들 (pdfjs 워커). 직접 고치지 않으므로 검사하지 않는다
+    "public/**",
   ]),
 ]);
 
