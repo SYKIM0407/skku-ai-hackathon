@@ -111,6 +111,11 @@ export type ConfirmRes = { clusterId: number; count: number } | OkRes;
 
 // §8.3 묶음 낭독 표시
 export interface ClusterReadReq { clusterId: number }
+// §8.3 다른 학생 질문에 "나도 모르겠어요" (같은 묶음에 합류, 1인 1회)
+export interface ClusterJoinReq { clusterId: number; anonId: string }
+export interface ClusterJoinRes { questionId: number; clusterId: number; count: number }
+// §8.3 교수가 질문 묶음 삭제 (questions.cluster_id는 null로 남음)
+export interface ClusterDeleteReq { clusterId: number }
 
 // §8.4 교수 질문
 export interface DetectReq { roomId: string; spoken: string; after: string }

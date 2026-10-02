@@ -144,6 +144,8 @@
 | FR-A6 | [보내기]된 질문은 강의 시점 기준으로 묶는다 (§8.3 묶기 규칙) | P0 |
 | FR-A7 | [취소]된 질문은 삭제한다 | P0 |
 | FR-A8 | 학생은 자기 질문과 같은 묶음의 인원을 본다 ("12명이 같은 질문을 했습니다") (S-5) | P0 |
+| FR-A10 | 학생은 다른 학생들의 질문(묶음 대표 질문·인원)을 보고 [나도 모르겠어요]로 같은 묶음에 합류한다 (1인 1회) | P0 |
+| FR-P4 | 교수는 질문 묶음을 확인 후 삭제할 수 있다 | P1 |
 | FR-A9 | AI 호출 실패·시간 초과 시 원문을 그대로 전달하고 "AI 정리 없이 전달되었습니다"를 안내한다 | P0 |
 
 ### 4.4 교수 화면: 질문 수신
@@ -424,6 +426,24 @@ export type ApiError = { error: { code: string; message: string } };
 3. 새 묶음의 `title`은 `refined`
 4. 후보를 고른 경우 `refined`를 그 후보로 바꾼 뒤 묶는다
 5. 1~3은 DB 함수 `join_cluster`로 한 번에 처리한다 (동시 [보내기]에도 인원이 꼬이지 않게)
+
+**`POST /api/cluster/join`** (학생 화면 "나도 모르겠어요", FR-A10)
+```jsonc
+// req
+{ "clusterId": 7, "anonId": "uuid" }
+// res 200 — 같은 묶음에 합류해 인원 +1. 같은 학생이 다시 누르면 인원은 그대로, 기존 questionId 반환
+{ "questionId": 130, "clusterId": 7, "count": 13 }
+```
+- DB 함수 `join_cluster_by_id`로 한 번에 처리 (raw "나도 모르겠어요", refined=묶음 대표 질문, status sent)
+- 학생 화면은 `clusters`(id, title, count)만 읽는다. 강의 문장 번호·원문은 보내지 않는다
+
+**`POST /api/cluster/delete`** (교수 화면 질문 묶음 [삭제], 확인 후)
+```jsonc
+// req
+{ "clusterId": 7 }
+// res 200 — 묶음 행 삭제. 전송된 질문 행은 cluster_id=null로 남는다 (학생 화면엔 "전달됨")
+{ "ok": true }
+```
 
 **`POST /api/cluster/read`** (교수 화면 [질문 읽어 주기] 후 호출)
 ```jsonc
