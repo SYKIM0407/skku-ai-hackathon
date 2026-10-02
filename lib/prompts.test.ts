@@ -47,6 +47,11 @@ describe('validateP2', () => {
     expect(r).toMatchObject({ type: 'open', options: null, question: input.spoken, expected_answer: null });
   });
 
+  it('after_is_answer=true면 수사적 질문으로 강제', () => {
+    expect(validateP2({ after_is_answer: true, is_real_question: true, type: 'open' }, input).is_real_question).toBe(false);
+    expect(validateP2({ after_is_answer: false, is_real_question: true, type: 'open' }, input).is_real_question).toBe(true);
+  });
+
   it('is_real_question은 true일 때만 true', () => {
     expect(validateP2({ is_real_question: 'yes' }, input).is_real_question).toBe(false);
   });
@@ -69,35 +74,44 @@ describe('P3', () => {
   ];
   const input = { question: '고윳값은 몇 개일까요?', expected_answer: '2개', context_lines: lines, distribution, answers: ['2개', '3개'] };
 
-  it('validateP3: 오해 최대 2개, ratio 퍼센트 보정·자르기, 없는 번호 제거, 빈 suggestion은 null', () => {
+  it('validateP3: 오해 최대 2개, 비율은 응답 항목으로 코드 계산, 없는 번호 제거, 빈 suggestion은 null', () => {
     const r = validateP3({
       misconceptions: [
-        { text: '크기와 개수 혼동', ratio: 20, line_ids: [43, 99] },
-        { text: '', ratio: 0.1 },
-        { text: 'b', ratio: 3 },
-        { text: 'c', ratio: 0.1 },
+        { text: '크기와 개수 혼동', answers: ['3 개'], ratio: 0.9, line_ids: [43, 99] },
+        { text: '', answers: ['1개'] },
+        { text: '항목 없으면 AI 비율(퍼센트 보정)', ratio: 15 },
+        { text: 'c', answers: ['1개'] },
       ],
-      suggestion: '  ',
-      spoken_summary: '70%가 2개라고 답했습니다.',
+      suggestion: 'null',
+      spoken_summary: '많은 학생이 잘 이해했습니다. 69%가 2개라고 답했습니다.',
     }, input);
     expect(r.misconceptions).toEqual([
       { text: '크기와 개수 혼동', ratio: 0.2, line_ids: [43] },
-      { text: 'b', ratio: 0.03, line_ids: [] },
+      { text: '항목 없으면 AI 비율(퍼센트 보정)', ratio: 0.15, line_ids: [] },
     ]);
     expect(r.suggestion).toBeNull();
-    expect(r.spoken_summary).toBe('70%가 2개라고 답했습니다.');
+    // 비율 문장은 코드가 만들고, AI 문장 중 숫자가 든 것은 버린다
+    expect(r.spoken_summary).toBe('정답(2개)을 고른 학생은 70%입니다. 많은 학생이 잘 이해했습니다.');
   });
 
-  it('spoken_summary가 비면 코드로 만든 요약', () => {
+  it('spoken_summary가 비면 코드 문장만, 정답이 없으면 가장 많은 답', () => {
     expect(validateP3({ misconceptions: 'x' }, input)).toEqual({
-      misconceptions: [], suggestion: null, spoken_summary: '가장 많은 응답은 2개이며 70%입니다',
+      misconceptions: [], suggestion: null, spoken_summary: '정답(2개)을 고른 학생은 70%입니다',
     });
+    expect(validateP3({}, { ...input, expected_answer: null }).spoken_summary).toBe('가장 많이 고른 답은 2개, 70%입니다');
   });
 
-  it('fallbackSummary: 응답 없으면 안내문', () => {
-    expect(fallbackSummary(distribution).spoken_summary).toBe('가장 많은 응답은 2개이며 70%입니다');
+  it('fallbackSummary: 정답 비율 / 가장 많은 답 / 응답 없음', () => {
+    expect(fallbackSummary(distribution, '2개').spoken_summary).toBe('정답(2개)을 고른 학생은 70%입니다');
+    expect(fallbackSummary(distribution).spoken_summary).toBe('가장 많이 고른 답은 2개, 70%입니다');
     expect(fallbackSummary([{ label: '1개', count: 0, ratio: 0 }]).spoken_summary).toBe('아직 응답이 없습니다');
     expect(fallbackSummary([])).toEqual({ misconceptions: [], suggestion: null, spoken_summary: '아직 응답이 없습니다' });
+  });
+
+  it('프롬프트에 예시 문장이 없다 (모델이 베끼지 않게)', () => {
+    const u = p3User(input);
+    expect(u).not.toContain('69%');
+    expect(u).not.toContain('행렬 크기(3×3)');
   });
 
   it('p3User: 분포·강의 문장이 프롬프트에 들어간다', () => {
