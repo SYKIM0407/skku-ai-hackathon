@@ -3,7 +3,7 @@ import { askJSON } from './llm';
 import { formatLines } from './context';
 import { DONT_KNOW } from './config';
 import type {
-  P1Input, P1Result, P2Input, P2Result, P3Input, P3Result,
+  DistributionItem, Misconception, P1Input, P1Result, P2Input, P2Result, P3Input, P3Result,
   ProfQType, QuestionCategory, TranscriptLine,
 } from './types';
 
@@ -166,11 +166,80 @@ export async function judgeProfQuestion(input: P2Input): Promise<P2Result | null
   return r ? validateP2(r, input) : null;
 }
 
-/** P3 교수 질문 응답 분석 (분포는 호출 전에 코드로 계산) */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// ───────────── P3 교수 질문 응답 분석 ─────────────
+
+export const P3_SYSTEM = `너는 수업 중 학생 응답을 분석해 교수에게 간결하게 보고하는 조교다.
+반드시 JSON만 출력한다.`;
+
+/** 프롬프트에 넣을 응답 수 상한 (대형 강의에서 토큰·시간 폭주 방지) */
+const P3_MAX_ANSWERS = 150;
+const P3_MAX_ANSWER_LEN = 200;
+
+const pct = (r: number) => `${Math.round(r * 100)}%`;
+const formatDistribution = (d: DistributionItem[]) =>
+  d.length ? d.map((x) => `${x.label} ${x.count}명(${pct(x.ratio)})`).join(', ') : '(응답 없음)';
+
+export function p3User({ question, expected_answer, context_lines, distribution, answers }: P3Input): string {
+  const shown = answers.slice(0, P3_MAX_ANSWERS).map((a) => `- ${a.trim().slice(0, P3_MAX_ANSWER_LEN)}`);
+  const more = answers.length > P3_MAX_ANSWERS ? `\n(외 ${answers.length - P3_MAX_ANSWERS}개 생략, 분포는 전체 기준)` : '';
+  return `[문항] ${question}
+[예상 정답] ${expected_answer ?? '(없음)'}
+[관련 강의 내용]
+${context_lines.length ? formatLines(context_lines) : '(없음)'}
+[답변 분포] ${formatDistribution(distribution)}
+[학생 응답 ${answers.length}개]
+${shown.join('\n') || '(없음)'}${more}
+
+1) 오답에 공통으로 나타나는 오해를 최대 2개 찾아라. 없으면 빈 배열.
+2) 각 오해와 관련된 강의 문장 번호를 적어라.
+3) 교수가 다시 설명하면 좋을 내용을 한 문장으로 써라.
+4) 교실에서 읽을 15초 이내의 요약문을 써라. 학생을 탓하지 않는 정중한 문체로 쓴다.
+5) 수업과 무관한 응답은 분석에서 제외한다.
+
+출력 형식:
+{
+  "misconceptions": [
+    { "text": "행렬 크기(3×3)와 고윳값 개수를 같다고 생각함", "ratio": 0.2, "line_ids": [52] }
+  ],
+  "suggestion": "고윳값 개수는 특성방정식의 해의 개수라는 점을 다시 설명해 주세요",
+  "spoken_summary": "69%가 2개라고 답했습니다. 20%는 행렬 크기와 고윳값 개수를 혼동했습니다."
+}`;
+}
+
+/** AI 없이 만드는 요약문 (PROMPTS.md P3 "실패 시") */
+export function fallbackSpokenSummary(distribution: DistributionItem[]): string {
+  const top = [...distribution].sort((a, b) => b.count - a.count)[0];
+  if (!top || top.count === 0) return '아직 응답이 없습니다';
+  return `가장 많은 응답은 ${top.label}이며 ${pct(top.ratio)}입니다`;
+}
+
+/** P3 실패 시 대체 결과. /api/prof-q/close에서 analyzeAnswers가 null이면 이걸 쓴다 */
+export function fallbackSummary(distribution: DistributionItem[]): P3Result {
+  return { misconceptions: [], suggestion: null, spoken_summary: fallbackSpokenSummary(distribution) };
+}
+
+/** P3 출력 검증. 테스트를 위해 export */
+export function validateP3(r: Record<string, unknown>, input: P3Input): P3Result {
+  const misconceptions: Misconception[] = (Array.isArray(r.misconceptions) ? r.misconceptions : [])
+    .map((m: unknown) => {
+      const o = (m ?? {}) as Record<string, unknown>;
+      let ratio = Number(o.ratio);
+      if (ratio > 1 && ratio <= 100) ratio /= 100; // "20"처럼 퍼센트로 오는 경우
+      return { text: str(o.text), ratio: clamp01(ratio), line_ids: validIds(o.line_ids, input.context_lines) };
+    })
+    .filter((m) => m.text)
+    .slice(0, 2);
+  return {
+    misconceptions,
+    suggestion: str(r.suggestion) || null,
+    spoken_summary: str(r.spoken_summary) || fallbackSpokenSummary(input.distribution),
+  };
+}
+
+/** P3 교수 질문 응답 분석 (분포는 호출 전에 lib/distribution.ts로 계산). 실패하면 null → fallbackSummary */
 export async function analyzeAnswers(input: P3Input): Promise<P3Result | null> {
-  // TODO(T-43, A): 2단계 feat/A-p3-dist
-  return null;
+  const r = await askJSON<Record<string, unknown>>(P3_SYSTEM, p3User(input));
+  return r ? validateP3(r, input) : null;
 }
 
 /** P6 교안 PDF 핵심 용어 추출 */

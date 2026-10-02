@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('server-only', () => ({}));
 vi.mock('./supabase/server', () => ({ sbAdmin: () => { throw new Error('DB 없음'); } }));
 
-const { validateP1, validateP2 } = await import('./prompts');
+const { validateP1, validateP2, validateP3, fallbackSummary, p3User } = await import('./prompts');
 const { parseJSONObject } = await import('./llm');
 
 const lines = [
@@ -58,5 +58,52 @@ describe('parseJSONObject', () => {
     expect(parseJSONObject('결과: {"a": [1,2]} 끝')).toEqual({ a: [1, 2] });
     expect(parseJSONObject('{"a":')).toBeNull();
     expect(parseJSONObject('[1,2]')).toBeNull();
+  });
+});
+
+describe('P3', () => {
+  const distribution = [
+    { label: '1개', count: 1, ratio: 0.1 },
+    { label: '2개', count: 7, ratio: 0.7 },
+    { label: '3개', count: 2, ratio: 0.2 },
+  ];
+  const input = { question: '고윳값은 몇 개일까요?', expected_answer: '2개', context_lines: lines, distribution, answers: ['2개', '3개'] };
+
+  it('validateP3: 오해 최대 2개, ratio 퍼센트 보정·자르기, 없는 번호 제거, 빈 suggestion은 null', () => {
+    const r = validateP3({
+      misconceptions: [
+        { text: '크기와 개수 혼동', ratio: 20, line_ids: [43, 99] },
+        { text: '', ratio: 0.1 },
+        { text: 'b', ratio: 3 },
+        { text: 'c', ratio: 0.1 },
+      ],
+      suggestion: '  ',
+      spoken_summary: '70%가 2개라고 답했습니다.',
+    }, input);
+    expect(r.misconceptions).toEqual([
+      { text: '크기와 개수 혼동', ratio: 0.2, line_ids: [43] },
+      { text: 'b', ratio: 0.03, line_ids: [] },
+    ]);
+    expect(r.suggestion).toBeNull();
+    expect(r.spoken_summary).toBe('70%가 2개라고 답했습니다.');
+  });
+
+  it('spoken_summary가 비면 코드로 만든 요약', () => {
+    expect(validateP3({ misconceptions: 'x' }, input)).toEqual({
+      misconceptions: [], suggestion: null, spoken_summary: '가장 많은 응답은 2개이며 70%입니다',
+    });
+  });
+
+  it('fallbackSummary: 응답 없으면 안내문', () => {
+    expect(fallbackSummary(distribution).spoken_summary).toBe('가장 많은 응답은 2개이며 70%입니다');
+    expect(fallbackSummary([{ label: '1개', count: 0, ratio: 0 }]).spoken_summary).toBe('아직 응답이 없습니다');
+    expect(fallbackSummary([])).toEqual({ misconceptions: [], suggestion: null, spoken_summary: '아직 응답이 없습니다' });
+  });
+
+  it('p3User: 분포·강의 문장이 프롬프트에 들어간다', () => {
+    const u = p3User(input);
+    expect(u).toContain('[답변 분포] 1개 1명(10%), 2개 7명(70%), 3개 2명(20%)');
+    expect(u).toContain('[L43] (-60초) 행렬식을 0으로 놓습니다');
+    expect(u).toContain('[학생 응답 2개]');
   });
 });
