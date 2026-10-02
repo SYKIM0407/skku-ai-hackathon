@@ -1,4 +1,5 @@
 'use client';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { postJSON } from '@/lib/api-client';
@@ -36,7 +37,9 @@ export default function Home() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-8 px-4 py-12">
       <header className="text-center">
-        <h1 className="text-5xl font-bold">🤔 갸웃</h1>
+        <h1>
+          <Image src="/logo.png" alt="갸웃" width={781} height={242} priority className="mx-auto h-auto w-80" />
+        </h1>
         <p className="mt-3 text-gray-600">수업을 함께 듣고, 학생과 교수 사이에서 대신 손을 들어 주는 AI</p>
       </header>
 
