@@ -59,20 +59,20 @@ function Card({ q, anonId }: { q: OpenQ; anonId: string }) {
   const pct = remaining === null ? 100 : Math.min(100, (remaining / duration) * 100);
 
   return (
-    <section className="rounded-2xl border-2 border-indigo-500 bg-indigo-50 p-5 shadow-sm">
-      <div className="mb-2 flex items-center justify-between text-sm font-semibold text-indigo-700">
+    <section className="rounded-2xl border-2 border-[#0b5cff] bg-[#0c1a3d] p-6 shadow-[0_0_40px_-10px_rgba(11,92,255,0.5)]">
+      <div className="mb-3 flex items-center justify-between text-sm font-semibold text-[#5b9bff]">
         <span>📢 교수님 질문</span>
         {remaining !== null && <span>{closed ? '마감' : `${Math.ceil(remaining / 1000)}초 남음`}</span>}
       </div>
-      <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-indigo-100">
-        <div className="h-full bg-indigo-500 transition-[width] duration-300" style={{ width: `${pct}%` }} />
+      <div className="mb-5 h-1.5 overflow-hidden rounded-full bg-[#16295a]">
+        <div className="h-full bg-[#0b5cff] transition-[width] duration-300" style={{ width: `${pct}%` }} />
       </div>
-      <p className="mb-4 text-lg font-medium text-gray-900">{q.question}</p>
+      <p className="mb-5 text-xl font-semibold text-white">{q.question}</p>
 
       {answered ? (
-        <p className="rounded-lg bg-white py-3 text-center font-semibold text-indigo-700">✅ 제출 완료 · 익명으로 전달됩니다</p>
+        <p className="rounded-xl bg-[#11214a] py-3 text-center font-semibold text-[#5b9bff]">✅ 제출 완료 · 익명으로 전달됩니다</p>
       ) : closed ? (
-        <p className="rounded-lg bg-white py-3 text-center text-gray-500">마감된 질문입니다</p>
+        <p className="rounded-xl bg-[#11214a] py-3 text-center text-slate-400">마감된 질문입니다</p>
       ) : q.type === 'choice' && q.options ? (
         <div className="grid gap-2 sm:grid-cols-2">
           {q.options.map((o) => (
@@ -80,7 +80,7 @@ function Card({ q, anonId }: { q: OpenQ; anonId: string }) {
               key={o}
               disabled={busy}
               onClick={() => submit(o)}
-              className="rounded-lg border border-indigo-200 bg-white px-4 py-3 text-left font-medium hover:border-indigo-500 hover:bg-indigo-100 disabled:opacity-50"
+              className="rounded-xl border border-[#24407e] bg-[#08122a] px-4 py-3 text-left font-medium text-slate-100 hover:border-[#3b82f6] hover:bg-[#11214a] disabled:opacity-50"
             >
               {o}
             </button>
@@ -101,7 +101,7 @@ function Card({ q, anonId }: { q: OpenQ; anonId: string }) {
               rows={2}
               maxLength={500}
               placeholder="생각을 자유롭게 적어 주세요"
-              className="flex-1 rounded-lg border border-indigo-200 px-3 py-2 focus:border-indigo-500 focus:outline-none"
+              className="flex-1 rounded-xl border border-[#24407e] bg-[#08122a] px-4 py-3 text-white placeholder:text-slate-500 focus:border-[#3b82f6] focus:outline-none"
             />
           ) : (
             <input
@@ -109,18 +109,18 @@ function Card({ q, anonId }: { q: OpenQ; anonId: string }) {
               onChange={(e) => setText(e.target.value)}
               maxLength={100}
               placeholder="짧게 답해 주세요"
-              className="flex-1 rounded-lg border border-indigo-200 px-3 py-2 focus:border-indigo-500 focus:outline-none"
+              className="flex-1 rounded-xl border border-[#24407e] bg-[#08122a] px-4 py-3 text-white placeholder:text-slate-500 focus:border-[#3b82f6] focus:outline-none"
             />
           )}
           <button
             disabled={busy || !text.trim()}
-            className="rounded-lg bg-indigo-600 px-5 font-semibold text-white hover:bg-indigo-700 disabled:bg-gray-300"
+            className="rounded-xl bg-[#0b5cff] px-6 font-semibold text-white hover:bg-[#2a72ff] disabled:opacity-40"
           >
             제출
           </button>
         </form>
       )}
-      {notice && <p className="mt-2 text-sm text-red-600">{notice}</p>}
+      {notice && <p className="mt-2 text-sm text-red-400">{notice}</p>}
     </section>
   );
 }

@@ -68,19 +68,19 @@ export function QuestionComposer({
   return (
     <>
       {phase.kind === 'review' && (
-        <div className="fixed inset-0 z-20 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-          <div role="dialog" aria-modal className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 z-20 flex items-end justify-center bg-black/60 p-4 sm:items-center">
+          <div role="dialog" aria-modal className="w-full max-w-lg rounded-2xl border border-[#1d3266] bg-[#0c1730] p-6 text-white shadow-2xl">
             {phase.q.candidates.length > 0 ? (
               <>
                 <h3 className="text-lg font-semibold">어떤 뜻인가요?</h3>
-                <p className="mt-1 text-sm text-gray-500">가장 가까운 질문을 고르면 교수님께 보냅니다</p>
+                <p className="mt-1 text-sm text-slate-400">가장 가까운 질문을 고르면 교수님께 보냅니다</p>
                 <div className="mt-4 flex flex-col gap-2">
                   {phase.q.candidates.map((c, i) => (
                     <button
                       key={i}
                       disabled={phase.sending}
                       onClick={() => confirm('send', i)}
-                      className="rounded-lg border border-gray-200 px-4 py-3 text-left hover:border-indigo-500 hover:bg-indigo-50 disabled:opacity-50"
+                      className="rounded-xl border border-[#24407e] bg-[#08122a] px-4 py-3 text-left hover:border-[#3b82f6] hover:bg-[#11214a] disabled:opacity-50"
                     >
                       {c}
                     </button>
@@ -90,14 +90,14 @@ export function QuestionComposer({
             ) : (
               <>
                 <h3 className="text-lg font-semibold">이렇게 보낼까요?</h3>
-                <p className="mt-4 rounded-lg bg-indigo-50 p-4 text-gray-900">{phase.q.refined}</p>
+                <p className="mt-4 rounded-xl border-l-4 border-[#0b5cff] bg-[#11214a] p-4 text-slate-100">{phase.q.refined}</p>
               </>
             )}
             <div className="mt-5 flex justify-end gap-2">
               <button
                 disabled={phase.sending}
                 onClick={() => confirm('cancel')}
-                className="rounded-lg px-4 py-2 text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+                className="rounded-xl px-4 py-2 text-slate-300 hover:bg-[#13254d] disabled:opacity-50"
               >
                 취소
               </button>
@@ -105,7 +105,7 @@ export function QuestionComposer({
                 <button
                   disabled={phase.sending}
                   onClick={() => confirm('send')}
-                  className="rounded-lg bg-indigo-600 px-5 py-2 font-semibold text-white hover:bg-indigo-700 disabled:bg-gray-300"
+                  className="rounded-xl bg-[#0b5cff] px-5 py-2 font-semibold text-white hover:bg-[#2a72ff] disabled:opacity-40"
                 >
                   {phase.sending ? '보내는 중…' : '보내기'}
                 </button>
@@ -115,35 +115,47 @@ export function QuestionComposer({
         </div>
       )}
 
-      <div className="sticky bottom-0 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur">
-        {phase.kind === 'notice' && (
-          <p
-            className={`mb-2 text-sm ${phase.tone === 'warn' ? 'text-amber-700' : 'text-indigo-700'}`}
-            role="status"
-          >
-            {phase.message}
-          </p>
-        )}
-        <form onSubmit={ask} className="mx-auto flex max-w-2xl gap-2">
-          <input
-            value={raw}
-            onChange={(e) => {
-              setRaw(e.target.value);
-              if (phase.kind === 'notice') setPhase({ kind: 'idle' });
-            }}
-            maxLength={500}
-            placeholder="궁금한 걸 편하게 적어 주세요 (예: 방금 그거 왜 0임?)"
-            aria-label="질문 입력"
-            className="flex-1 rounded-full border border-gray-300 px-4 py-3 focus:border-indigo-500 focus:outline-none"
-          />
-          <button
-            disabled={!raw.trim() || phase.kind === 'loading'}
-            className="rounded-full bg-indigo-600 px-6 font-semibold text-white hover:bg-indigo-700 disabled:bg-gray-300"
-          >
-            {phase.kind === 'loading' ? '정리 중…' : '질문'}
-          </button>
-        </form>
+      <div className="sticky bottom-0 mx-auto w-full max-w-4xl px-4 pt-2 pb-6">
+        <div className="rounded-2xl border border-[#1d3266] bg-[#0c1730]/95 p-3 shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.6)] backdrop-blur">
+          {phase.kind === 'notice' && (
+            <p
+              className={`mb-2 px-3 text-sm ${phase.tone === 'warn' ? 'text-amber-400' : 'text-[#5b9bff]'}`}
+              role="status"
+            >
+              {phase.message}
+            </p>
+          )}
+          <form onSubmit={ask} className="flex gap-3">
+            <input
+              value={raw}
+              onChange={(e) => {
+                setRaw(e.target.value);
+                if (phase.kind === 'notice') setPhase({ kind: 'idle' });
+              }}
+              maxLength={500}
+              placeholder="궁금한 걸 편하게 적어 주세요 (예: 방금 그거 왜 0임?)"
+              aria-label="질문 입력"
+              className="min-w-0 flex-1 rounded-full border border-[#24407e] bg-[#08122a] px-6 py-4 text-lg text-white placeholder:text-slate-500 focus:border-[#3b82f6] focus:outline-none"
+            />
+            <button
+              disabled={!raw.trim() || phase.kind === 'loading'}
+              className="flex shrink-0 items-center gap-2 rounded-full bg-[#0b5cff] px-8 text-lg font-semibold text-white hover:bg-[#2a72ff] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {phase.kind === 'loading' ? '정리 중…' : '질문 보내기'}
+              {phase.kind !== 'loading' && <SendIcon />}
+            </button>
+          </form>
+        </div>
       </div>
     </>
+  );
+}
+
+function SendIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M4 3.5 21 12 4 20.5 7 12Z" />
+      <path d="M7 12h6" />
+    </svg>
   );
 }

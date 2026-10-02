@@ -19,7 +19,7 @@ export function MyQuestions({ roomId, items }: { roomId: string; items: MyQuesti
 
   if (!items.length) {
     return (
-      <p className="py-10 text-center text-sm text-gray-400">
+      <p className="py-16 text-center text-slate-400">
         이해가 안 되는 순간 아래에 바로 적어 보세요.
         <br />
         &ldquo;방금 그거 뭐예요?&rdquo;처럼 짧아도 괜찮아요.
@@ -32,14 +32,24 @@ export function MyQuestions({ roomId, items }: { roomId: string; items: MyQuesti
       {[...items].reverse().map((q) => {
         const n = counts?.[q.clusterId];
         return (
-          <li key={q.id} className="rounded-xl border border-gray-200 bg-white p-4">
-            <p className="text-gray-900">{q.refined}</p>
-            <p className="mt-2 text-sm font-medium text-indigo-600">
-              {n === undefined ? '전달됨' : n > 1 ? `🙋 ${n}명이 같은 질문을 했습니다` : '🙋 교수님께 전달되었습니다'}
+          <li key={q.id} className="rounded-2xl border border-l-4 border-[#1d3266] border-l-[#0b5cff] bg-[#0c1730]/90 px-7 py-6">
+            <p className="text-xl leading-relaxed font-medium text-slate-100">{q.refined}</p>
+            <p className="mt-4 inline-flex items-center gap-2.5 rounded-xl bg-[#11214a] px-4 py-2 font-semibold text-[#4c8dff]">
+              <CheckCircle />
+              {n !== undefined && n > 1 ? `${n}명이 같은 질문을 했습니다` : '교수님께 전달되었습니다'}
             </p>
           </li>
         );
       })}
     </ul>
+  );
+}
+
+function CheckCircle() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="10" />
+      <path d="m8 12 3 3 5-6" />
+    </svg>
   );
 }

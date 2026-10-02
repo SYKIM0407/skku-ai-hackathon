@@ -49,9 +49,9 @@ function StudentRoom({ roomId }: { roomId: string }) {
 
   if (room === null) {
     return (
-      <main className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
+      <main className="flex flex-1 flex-col items-center justify-center gap-4 bg-[#070d1c] p-8 text-center text-white">
         <p className="text-lg">수업방 <b className="font-mono">{roomId}</b>을(를) 찾을 수 없습니다.</p>
-        <Link href="/" className="text-indigo-600 underline">
+        <Link href="/" className="text-[#5b9bff] underline">
           코드 다시 입력하기
         </Link>
       </main>
@@ -61,22 +61,31 @@ function StudentRoom({ roomId }: { roomId: string }) {
   const ended = room?.status === 'ended';
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col">
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white/95 px-4 py-3 backdrop-blur">
-        <div>
-          <h1 className="font-semibold text-gray-900">{room?.title ?? '불러오는 중…'}</h1>
-          <p className="font-mono text-xs text-gray-400">{roomId}</p>
+    <div className="flex flex-1 flex-col bg-[#070d1c] bg-[radial-gradient(ellipse_at_top,#0c1a3a_0%,transparent_55%)] text-white">
+      <header className="sticky top-0 z-10 border-b border-[#16264d] bg-[#0a1226]/90 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-4 px-4 py-4">
+          <div className="flex min-w-0 items-center gap-4">
+            <span className="text-2xl font-extrabold tracking-tight">GYAUT</span>
+            <span className="h-6 w-px bg-[#24345e]" aria-hidden />
+            <h1 className="truncate text-lg font-semibold text-slate-200">{room?.title ?? '불러오는 중…'}</h1>
+            <span className="rounded-lg bg-[#13254d] px-3 py-1 font-mono text-sm font-semibold text-[#5b9bff]">{roomId}</span>
+          </div>
+          <LiveBadge mode={mode} dark />
         </div>
-        <LiveBadge mode={mode} />
       </header>
 
-      <main className="flex flex-1 flex-col gap-4 px-4 py-4">
+      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-5 px-4 py-8">
         {ended ? (
-          <p className="rounded-xl bg-gray-100 p-4 text-center text-gray-600">수업이 종료되었습니다. 참여해 주셔서 감사합니다.</p>
+          <p className="rounded-2xl border border-[#1d3266] bg-[#0c1730] p-5 text-center text-slate-300">
+            수업이 종료되었습니다. 참여해 주셔서 감사합니다.
+          </p>
         ) : (
           anonId && <ProfQuestionCard roomId={roomId} anonId={anonId} />
         )}
-        <h2 className="text-sm font-semibold text-gray-500">내 질문</h2>
+        <h2 className="flex items-center gap-3 px-1 text-2xl font-bold">
+          내 질문
+          <span className="rounded-lg border border-[#1d3a7a] bg-[#0f1d3d] px-3 py-0.5 text-lg text-[#5b9bff]">{mine.length}</span>
+        </h2>
         <MyQuestions roomId={roomId} items={mine} />
       </main>
 
