@@ -34,6 +34,7 @@
 | [docs/PROPOSAL.md](docs/PROPOSAL.md) | 기획서 (최상위 기준) |
 | [docs/SPEC.md](docs/SPEC.md) | 기능 명세서 (요구사항, 데이터 모델, API, 화면, 정책) |
 | [docs/PROMPTS.md](docs/PROMPTS.md) | AI 프롬프트 명세 |
+| [docs/EVAL_RESULTS.md](docs/EVAL_RESULTS.md) | AI 정확도 평가 결과 (E1~E4) |
 | [docs/TASKS.md](docs/TASKS.md) | 태스크 분배·마일스톤 (진행 기록) |
 | [docs/SETUP.md](docs/SETUP.md) | 실행·환경 변수·Supabase·Vercel 가이드 |
 | [docs/DEMO_CHECKLIST.md](docs/DEMO_CHECKLIST.md) | 시연 전 점검 목록 |
