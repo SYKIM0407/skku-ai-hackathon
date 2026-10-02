@@ -58,8 +58,9 @@ function ProfRoom({ roomId }: { roomId: string }) {
           .from('prof_questions')
           .select('id, room_id, spoken, question, type, options, expected_answer, status, closes_at, summary')
           .eq('room_id', roomId)
+          .neq('status', 'dismissed') // [삭제]한 질문은 목록에서 뺀다
           .order('id', { ascending: false })
-          .limit(20)
+          .limit(100)
       ).data ?? []) as ProfQuestion[],
     'prof_questions',
     `room_id=eq.${roomId}`,
