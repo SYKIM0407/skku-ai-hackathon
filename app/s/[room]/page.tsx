@@ -1,10 +1,11 @@
 'use client';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { MyQuestions } from '@/components/student/MyQuestions';
 import { ProfQuestionCard } from '@/components/student/ProfQuestionCard';
 import { QuestionComposer } from '@/components/student/QuestionComposer';
+import { RoomQuestions } from '@/components/student/RoomQuestions';
 import { LiveBadge } from '@/components/ui/LiveBadge';
 import { RoomEndedOverlay } from '@/components/ui/RoomEndedOverlay';
 import { useMounted } from '@/components/ui/useMounted';
@@ -22,6 +23,7 @@ export default function StudentPage() {
 }
 
 function StudentRoom({ roomId }: { roomId: string }) {
+  const router = useRouter();
   const myKey = `gyaut:my:${roomId}`;
   const [anonId] = useState(getAnonId);
   const [mine, setMine] = useState<MyQuestion[]>(() => store.get<MyQuestion[]>(myKey, []));
@@ -70,7 +72,18 @@ function StudentRoom({ roomId }: { roomId: string }) {
             <h1 className="truncate text-lg font-semibold text-slate-200">{room?.title ?? '불러오는 중…'}</h1>
             <span className="rounded-lg bg-[#13254d] px-3 py-1 font-mono text-sm font-semibold text-[#5b9bff]">{roomId}</span>
           </div>
-          <LiveBadge mode={mode} dark />
+          <div className="flex shrink-0 items-center gap-3">
+            <LiveBadge mode={mode} dark />
+            {/* 교수가 종료하지 않아도 학생은 언제든 나갈 수 있다. 내 질문은 localStorage에 남아 다시 들어오면 보인다 */}
+            <button
+              onClick={() => {
+                if (window.confirm('수업에서 나갈까요? 다시 코드를 입력하면 돌아올 수 있어요.')) router.push('/');
+              }}
+              className="rounded-lg border border-[#24407e] px-3 py-1.5 text-sm text-slate-300 hover:bg-[#13254d]"
+            >
+              나가기
+            </button>
+          </div>
         </div>
       </header>
 
@@ -87,6 +100,9 @@ function StudentRoom({ roomId }: { roomId: string }) {
           <span className="rounded-lg border border-[#1d3a7a] bg-[#0f1d3d] px-3 py-0.5 text-lg text-[#5b9bff]">{mine.length}</span>
         </h2>
         <MyQuestions roomId={roomId} items={mine} />
+
+        <h2 className="mt-2 px-1 text-2xl font-bold">다른 학생들의 질문</h2>
+        {anonId && <RoomQuestions roomId={roomId} anonId={anonId} mine={mine} onJoined={addMine} disabled={ended} />}
       </main>
 
       {!ended && anonId && <QuestionComposer roomId={roomId} anonId={anonId} onSent={addMine} />}
