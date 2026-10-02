@@ -15,7 +15,8 @@ const TYPES: ProfQType[] = ['choice', 'short', 'open'];
 export async function POST(req: Request) {
   const body = await readJson(req);
   if (!body) return badRequest('요청 형식이 올바르지 않습니다');
-  const sec = durationOf(body.durationSec);
+  // durationSec 0 = 시간 제한 없음 (교수가 [마감]할 때까지). 410 판정은 prof_q_answerable이 closes_at null을 '열림'으로 본다
+  const sec = body.durationSec === 0 || body.durationSec === '0' ? null : durationOf(body.durationSec);
   const db = sbAdmin();
 
   const pqId = id(body.profQuestionId);
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
     if ('error' in active) return active.error;
     if (active.open) return fail(409, 'PROFQ_OPEN', '진행 중인 질문을 먼저 마감해 주세요');
 
-    const closesAt = closesAtFrom(sec);
+    const closesAt = sec === null ? null : closesAtFrom(sec);
     const { data, error: e } = await db
       .from('prof_questions')
       .update({ status: 'open', closes_at: closesAt })
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
   if ('error' in active) return active.error;
   if (active.open) return fail(409, 'PROFQ_OPEN', '진행 중인 질문을 먼저 마감해 주세요');
 
-  const closesAt = closesAtFrom(sec);
+  const closesAt = sec === null ? null : closesAtFrom(sec);
   const { data, error } = await db
     .from('prof_questions')
     .insert({ room_id: r.room.id, spoken: null, question, type, options, status: 'open', closes_at: closesAt })
