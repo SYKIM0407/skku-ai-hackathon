@@ -139,9 +139,18 @@ describe('P6', () => {
 describe('P7 응답 거르기', () => {
   const input = { question: '고윳값은 몇 개일까요?', expected_answer: '2개', answers: ['2개', '3개', 'ㅋㅋㅋ', '모르겠어요'] };
 
-  it('validateP7: 없는 번호·잘못된 사유·중복 번호는 버린다', () => {
+  it('validateP7: 입력에 없는 응답·잘못된 사유·같은 응답 중복은 버리고, 응답 글자로 번호를 찾는다', () => {
     const r = validateP7(
-      { flagged: [{ index: 2, reason: '무관' }, { index: 2, reason: '부적절' }, { index: 9, reason: '무관' }, { index: 1, reason: '오답' }, { index: '0', reason: '부적절' }] },
+      {
+        flagged: [
+          { answer: 'ㅋㅋㅋ', reason: '무관' },
+          { answer: ' ㅋ ㅋ ㅋ ', reason: '부적절' }, // 정규화하면 같은 응답 → 한 번만
+          { answer: '없는 응답', reason: '무관' },
+          { answer: '3개', reason: '오답' },
+          { answer: '2개', reason: '부적절' },
+          { index: 1, reason: '무관' }, // 번호만 오면 무시
+        ],
+      },
       input,
     );
     expect(r.flagged).toEqual([{ index: 2, reason: '무관' }, { index: 0, reason: '부적절' }]);
@@ -149,10 +158,10 @@ describe('P7 응답 거르기', () => {
     expect(validateP7({}, input).flagged).toEqual([]);
   });
 
-  it('p7User: 응답에 번호를 붙이고, 틀린 답·모름은 고르지 말라고 안내', () => {
+  it('p7User: 응답을 따옴표로 그대로 싣고, 틀린 답·모름은 고르지 말라고 안내', () => {
     const u = p7User(input);
-    expect(u).toContain('0. 2개');
-    expect(u).toContain('3. 모르겠어요');
+    expect(u).toContain('- "2개"');
+    expect(u).toContain('- "모르겠어요"');
     expect(u).toContain('틀린 답');
   });
 
